@@ -1,6 +1,6 @@
 
-import { useState, useMemo, useEffect } from "react";
-import { Search, Filter, MapPin, Globe, Mail, Phone, ExternalLink, Sparkles, Loader2, Calendar } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Search, Filter, MapPin, Globe, Mail, Phone, ExternalLink, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,58 +12,85 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 
+// Mock data for demonstration
+const mockData = [
+  {
+    id: 1,
+    name: "GreenTech Accelerator KL",
+    website: "https://greentech-kl.com",
+    description: "Accelerating sustainable technology startups in Malaysia",
+    sector: "Technology",
+    location: "Kuala Lumpur",
+    programType: "Accelerator",
+    contactEmail: "info@greentech-kl.com",
+    contactPhone: "+60 3-2123 4567",
+    notes: "Focus on clean energy and environmental solutions"
+  },
+  {
+    id: 2,
+    name: "Social Impact Ventures",
+    website: "https://sivmalaysia.org",
+    description: "Investment fund supporting social enterprises across Southeast Asia",
+    sector: "Finance",
+    location: "Selangor",
+    programType: "Funder",
+    contactEmail: "contact@sivmalaysia.org",
+    contactPhone: "+60 3-7890 1234",
+    notes: "Minimum investment RM 100k, focus on measurable social impact"
+  },
+  {
+    id: 3,
+    name: "Rural Education Initiative",
+    website: "https://rural-edu.my",
+    description: "Improving educational access in rural Malaysian communities",
+    sector: "Education",
+    location: "Sabah",
+    programType: "Social Enterprise",
+    contactEmail: "team@rural-edu.my",
+    contactPhone: "+60 8-8765 4321",
+    notes: "Currently serving 25 rural schools"
+  },
+  {
+    id: 4,
+    name: "HealthTech Incubator",
+    website: "https://healthtech.my",
+    description: "Supporting healthcare innovation and digital health solutions",
+    sector: "Healthcare",
+    location: "Penang",
+    programType: "Incubator",
+    contactEmail: "hello@healthtech.my",
+    contactPhone: "+60 4-1234 5678",
+    notes: "12-month program with mentorship and funding"
+  }
+];
+
 const DataExplore = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sectorFilter, setSectorFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
+  const [programTypeFilter, setProgramTypeFilter] = useState("all");
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiMatches, setAiMatches] = useState([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiResults, setShowAiResults] = useState(false);
-  const [startups, setStartups] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Fetch startups from Supabase
-  useEffect(() => {
-    const fetchStartups = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('startups')
-          .select('*')
-          .order('inserted_at', { ascending: false });
-
-        if (error) {
-          throw error;
-        }
-
-        setStartups(data || []);
-      } catch (error) {
-        console.error('Error fetching startups:', error);
-        toast.error("Failed to load startups data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchStartups();
-  }, []);
 
   const filteredData = useMemo(() => {
     if (showAiResults && aiMatches.length > 0) {
       return aiMatches;
     }
     
-    return startups.filter(item => {
-      const matchesSearch = (item.startup_name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                           (item.description?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                           (item.related_news_updates?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+    return mockData.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           item.notes.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesSector = sectorFilter === "all" || item.industry_sector === sectorFilter;
+      const matchesSector = sectorFilter === "all" || item.sector === sectorFilter;
       const matchesLocation = locationFilter === "all" || item.location === locationFilter;
+      const matchesProgramType = programTypeFilter === "all" || item.programType === programTypeFilter;
       
-      return matchesSearch && matchesSector && matchesLocation;
+      return matchesSearch && matchesSector && matchesLocation && matchesProgramType;
     });
-  }, [searchTerm, sectorFilter, locationFilter, showAiResults, aiMatches, startups]);
+  }, [searchTerm, sectorFilter, locationFilter, programTypeFilter, showAiResults, aiMatches]);
 
   const handleAiSearch = async () => {
     if (!aiPrompt.trim()) {
@@ -84,16 +111,18 @@ const DataExplore = () => {
         throw error;
       }
 
-      // Map AI matches to startup data format for display
+      // Map AI matches to mock data format for display
       const mappedMatches = data.matches?.map((match: any, index: number) => ({
         id: `ai-${index}`,
-        startup_name: match.name || "AI Recommended Startup",
-        website_url: "#",
+        name: match.name || "AI Recommended Organization",
+        website: "#",
         description: match.description || "AI-recommended match based on your criteria",
-        industry_sector: Array.isArray(match.sectors) ? match.sectors[0] : "Various",
+        sector: Array.isArray(match.sectors) ? match.sectors[0] : "Various",
         location: Array.isArray(match.regions) ? match.regions[0] : "Malaysia",
-        contact_info: "contact@example.com",
-        related_news_updates: `AI Match: ${match.matchPercentage}% compatibility. ${match.reasons?.join('. ') || 'Recommended based on your criteria'}`,
+        programType: "AI Match",
+        contactEmail: "contact@example.com",
+        contactPhone: "+60 3-0000 0000",
+        notes: `AI Match: ${match.matchPercentage}% compatibility. ${match.reasons?.join('. ') || 'Recommended based on your criteria'}`,
         matchPercentage: match.matchPercentage,
         reasons: match.reasons,
         isAiMatch: true
@@ -121,19 +150,9 @@ const DataExplore = () => {
     setAiPrompt("");
   };
 
-  const sectors = [...new Set(startups.map(item => item.industry_sector).filter(Boolean))];
-  const locations = [...new Set(startups.map(item => item.location).filter(Boolean))];
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-green-600" />
-        </div>
-      </div>
-    );
-  }
+  const sectors = [...new Set(mockData.map(item => item.sector))];
+  const locations = [...new Set(mockData.map(item => item.location))];
+  const programTypes = [...new Set(mockData.map(item => item.programType))];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100">
@@ -143,10 +162,10 @@ const DataExplore = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Explore the Startup Ecosystem
+            Explore the Ecosystem
           </h1>
           <p className="text-lg text-gray-600">
-            Discover {startups.length} startups in Malaysia's ecosystem
+            Discover {mockData.length} organizations in Malaysia's social enterprise ecosystem
           </p>
         </div>
 
@@ -157,11 +176,11 @@ const DataExplore = () => {
             <h3 className="text-lg font-semibold text-gray-900">AI-Powered Discovery</h3>
           </div>
           <p className="text-gray-600 mb-4">
-            Describe what type of startup you're looking for, and our AI will find the best matches
+            Describe what type of startup or organization you're looking for, and our AI will find the best matches
           </p>
           <div className="space-y-4">
             <Textarea
-              placeholder="e.g., 'I'm looking for early-stage fintech startups in Kuala Lumpur focused on digital payments and financial inclusion...'"
+              placeholder="e.g., 'I'm looking for early-stage fintech startups in Kuala Lumpur focused on digital payments and financial inclusion for underserved communities...'"
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               className="min-h-[100px]"
@@ -195,11 +214,11 @@ const DataExplore = () => {
 
         {/* Traditional Search and Filters */}
         <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 mb-8 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search startups..."
+                placeholder="Search organizations..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -230,6 +249,18 @@ const DataExplore = () => {
                 ))}
               </SelectContent>
             </Select>
+            
+            <Select value={programTypeFilter} onValueChange={setProgramTypeFilter} disabled={showAiResults}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {programTypes.map(type => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="flex flex-wrap gap-2">
@@ -247,6 +278,11 @@ const DataExplore = () => {
                 Location: {locationFilter} ×
               </Badge>
             )}
+            {programTypeFilter !== "all" && (
+              <Badge variant="secondary" onClick={() => setProgramTypeFilter("all")} className="cursor-pointer">
+                Type: {programTypeFilter} ×
+              </Badge>
+            )}
           </div>
         </div>
 
@@ -257,16 +293,14 @@ const DataExplore = () => {
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-xl text-gray-900 mb-2">{item.startup_name}</CardTitle>
+                    <CardTitle className="text-xl text-gray-900 mb-2">{item.name}</CardTitle>
                     <div className="flex flex-wrap gap-2 mb-2">
                       <Badge className={item.isAiMatch ? "bg-green-500 text-white hover:bg-green-600" : "bg-green-100 text-green-800 hover:bg-green-200"}>
-                        {item.industry_sector}
+                        {item.programType}
                       </Badge>
-                      {item.location && (
-                        <Badge variant="outline" className="border-blue-300 text-blue-700">
-                          {item.location}
-                        </Badge>
-                      )}
+                      <Badge variant="outline" className="border-blue-300 text-blue-700">
+                        {item.sector}
+                      </Badge>
                       {item.isAiMatch && item.matchPercentage && (
                         <Badge className="bg-blue-500 text-white">
                           {item.matchPercentage}% match
@@ -274,39 +308,27 @@ const DataExplore = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    {item.website_url && item.website_url !== "#" && (
-                      <a 
-                        href={item.website_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-gray-400 hover:text-green-600 transition-colors"
-                      >
-                        <ExternalLink className="h-5 w-5" />
-                      </a>
-                    )}
-                    {item.isAiMatch && (
-                      <Sparkles className="h-5 w-5 text-green-600" />
-                    )}
-                  </div>
+                  {item.website && item.website !== "#" && (
+                    <a 
+                      href={item.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-green-600 transition-colors"
+                    >
+                      <ExternalLink className="h-5 w-5" />
+                    </a>
+                  )}
+                  {item.isAiMatch && (
+                    <Sparkles className="h-5 w-5 text-green-600" />
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-gray-600">{item.description}</p>
                 
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  {item.location && (
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      {item.location}
-                    </div>
-                  )}
-                  {item.founding_year && (
-                    <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-1" />
-                      Founded {item.founding_year}
-                    </div>
-                  )}
+                <div className="flex items-center text-sm text-gray-500">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  {item.location}
                 </div>
                 
                 {item.isAiMatch && item.reasons && (
@@ -323,17 +345,28 @@ const DataExplore = () => {
                   </div>
                 )}
                 
-                {item.contact_info && (
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-gray-800 mb-1">Contact Information:</h4>
-                    <p className="text-sm text-gray-600">{item.contact_info}</p>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  {item.contactEmail && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Mail className="h-4 w-4 mr-2" />
+                      <a href={`mailto:${item.contactEmail}`} className="hover:text-green-600 transition-colors">
+                        {item.contactEmail}
+                      </a>
+                    </div>
+                  )}
+                  {item.contactPhone && (
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Phone className="h-4 w-4 mr-2" />
+                      <a href={`tel:${item.contactPhone}`} className="hover:text-green-600 transition-colors">
+                        {item.contactPhone}
+                      </a>
+                    </div>
+                  )}
+                </div>
                 
-                {item.related_news_updates && !item.isAiMatch && (
-                  <div className="bg-blue-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-blue-800 mb-1">Recent Updates:</h4>
-                    <p className="text-sm text-blue-700">{item.related_news_updates}</p>
+                {item.notes && (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <p className="text-sm text-gray-600">{item.notes}</p>
                   </div>
                 )}
               </CardContent>
@@ -352,14 +385,14 @@ const DataExplore = () => {
         {/* CTA Section */}
         <div className="text-center mt-12 bg-white/80 backdrop-blur-sm rounded-lg p-8">
           <h3 className="text-2xl font-bold text-gray-900 mb-4">
-            Know a startup we're missing?
+            Know an organization we're missing?
           </h3>
           <p className="text-gray-600 mb-6">
-            Help us build a comprehensive database by contributing information about startups in Malaysia
+            Help us build a comprehensive database by contributing information about social enterprises in Malaysia
           </p>
           <Link to="/contribute">
             <Button className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
-              Contribute Startup Data
+              Contribute Data
             </Button>
           </Link>
         </div>
