@@ -14,6 +14,8 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -39,7 +41,11 @@ const Auth = () => {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/admin`
+            emailRedirectTo: `${window.location.origin}/admin`,
+            data: {
+              first_name: firstName,
+              last_name: lastName,
+            }
           }
         });
 
@@ -87,6 +93,33 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAuth} className="space-y-4">
+              {!isLogin && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="John"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Doe"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Globe, Download, Upload, LogOut } from "lucide-react";
+import { Plus, Trash2, Globe, Download, Upload, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,13 +8,23 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
+
+interface UserProfile {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  role: string;
+  created_at: string;
+}
 
 const AdminPanel = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [urls, setUrls] = useState([
     "https://www.adb.org/countries/malaysia/social-enterprises",
@@ -34,6 +44,20 @@ const AdminPanel = () => {
         return;
       }
       setUser(session.user);
+      
+      // Fetch user profile
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else {
+        setUserProfile(profile);
+      }
+      
       setLoading(false);
     };
 
@@ -160,6 +184,10 @@ const AdminPanel = () => {
     return null; // Will redirect to auth page
   }
 
+  const displayName = userProfile?.first_name && userProfile?.last_name 
+    ? `${userProfile.first_name} ${userProfile.last_name}`
+    : userProfile?.email || user.email;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100">
       <Navbar />
@@ -171,9 +199,15 @@ const AdminPanel = () => {
               Admin Panel
             </h1>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                Welcome, {user.email}
-              </span>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <User className="h-4 w-4" />
+                <span>Welcome, {displayName}</span>
+                {userProfile?.role && (
+                  <Badge variant="outline" className="text-xs">
+                    {userProfile.role}
+                  </Badge>
+                )}
+              </div>
               <Button
                 onClick={handleLogout}
                 variant="outline"
