@@ -9,31 +9,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
+import { supabase } from "@/integrations/supabase/client";
 
 const DataInput = () => {
   const { toast } = useToast();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    organizationName: "",
-    website: "",
+    startup_name: "",
+    website_url: "",
     description: "",
-    sector: "",
+    industry_sector: "",
     location: "",
-    programType: "",
-    contactEmail: "",
-    contactPhone: "",
-    notes: ""
+    founding_year: "",
+    contact_info: "",
+    related_news_updates: ""
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Simple validation
-    if (!formData.organizationName || !formData.description || !formData.sector) {
+    if (!formData.startup_name || !formData.description || !formData.industry_sector) {
       toast({
         title: "Missing Information",
-        description: "Please fill in at least the organization name, description, and sector.",
+        description: "Please fill in at least the startup name, description, and industry sector.",
         variant: "destructive",
       });
       return;
@@ -42,43 +42,47 @@ const DataInput = () => {
     setIsSubmitting(true);
 
     try {
-      // Submit to your webhook
-      const response = await fetch("https://n8n.vebmy.com/webhook-test/submitOrgInfo", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      // Insert into Supabase startups table
+      const { error } = await supabase
+        .from('startups')
+        .insert([{
+          startup_name: formData.startup_name,
+          website_url: formData.website_url,
+          description: formData.description,
+          industry_sector: formData.industry_sector,
+          location: formData.location,
+          founding_year: formData.founding_year ? parseInt(formData.founding_year) : null,
+          contact_info: formData.contact_info,
+          related_news_updates: formData.related_news_updates
+        }]);
 
-      if (response.ok) {
-        console.log("Data submitted successfully:", formData);
-        
-        toast({
-          title: "Thank you!",
-          description: "Your contribution has been submitted and will be reviewed.",
-        });
-        
-        setIsSubmitted(true);
-        
-        // Reset form after 3 seconds
-        setTimeout(() => {
-          setIsSubmitted(false);
-          setFormData({
-            organizationName: "",
-            website: "",
-            description: "",
-            sector: "",
-            location: "",
-            programType: "",
-            contactEmail: "",
-            contactPhone: "",
-            notes: ""
-          });
-        }, 3000);
-      } else {
-        throw new Error("Failed to submit");
+      if (error) {
+        throw error;
       }
+
+      console.log("Data submitted successfully:", formData);
+      
+      toast({
+        title: "Thank you!",
+        description: "Your startup has been submitted and added to our database.",
+      });
+      
+      setIsSubmitted(true);
+      
+      // Reset form after 3 seconds
+      setTimeout(() => {
+        setIsSubmitted(false);
+        setFormData({
+          startup_name: "",
+          website_url: "",
+          description: "",
+          industry_sector: "",
+          location: "",
+          founding_year: "",
+          contact_info: "",
+          related_news_updates: ""
+        });
+      }, 3000);
     } catch (error) {
       console.error("Error submitting data:", error);
       toast({
@@ -110,8 +114,8 @@ const DataInput = () => {
                 Thank You for Contributing!
               </h2>
               <p className="text-gray-600 mb-6">
-                Your submission has been received and will be reviewed by our team. 
-                Together, we're building a comprehensive map of Malaysia's social enterprise ecosystem.
+                Your startup submission has been received and added to our database. 
+                Together, we're building a comprehensive map of Malaysia's startup ecosystem.
               </p>
               <p className="text-sm text-gray-500">
                 Redirecting to form in a few seconds...
@@ -133,38 +137,38 @@ const DataInput = () => {
             Contribute to the Ecosystem
           </h1>
           <p className="text-lg text-gray-600">
-            Help us map Malaysia's social enterprise ecosystem by sharing information 
-            about organizations you know.
+            Help us map Malaysia's startup ecosystem by sharing information 
+            about startups you know.
           </p>
         </div>
 
         <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900">
-              Organization Information
+              Startup Information
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="organizationName">Organization Name *</Label>
+                  <Label htmlFor="startup_name">Startup Name *</Label>
                   <Input
-                    id="organizationName"
-                    value={formData.organizationName}
-                    onChange={(e) => handleInputChange("organizationName", e.target.value)}
-                    placeholder="Enter organization name"
+                    id="startup_name"
+                    value={formData.startup_name}
+                    onChange={(e) => handleInputChange("startup_name", e.target.value)}
+                    placeholder="Enter startup name"
                     required
                   />
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="website">Website / Link</Label>
+                  <Label htmlFor="website_url">Website URL</Label>
                   <Input
-                    id="website"
+                    id="website_url"
                     type="url"
-                    value={formData.website}
-                    onChange={(e) => handleInputChange("website", e.target.value)}
+                    value={formData.website_url}
+                    onChange={(e) => handleInputChange("website_url", e.target.value)}
                     placeholder="https://example.com"
                   />
                 </div>
@@ -176,7 +180,7 @@ const DataInput = () => {
                   id="description"
                   value={formData.description}
                   onChange={(e) => handleInputChange("description", e.target.value)}
-                  placeholder="Brief description of the organization and its mission"
+                  placeholder="Brief description of the startup and its mission"
                   rows={3}
                   required
                 />
@@ -184,8 +188,8 @@ const DataInput = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="sector">Sector *</Label>
-                  <Select value={formData.sector} onValueChange={(value) => handleInputChange("sector", value)}>
+                  <Label htmlFor="industry_sector">Industry Sector *</Label>
+                  <Select value={formData.industry_sector} onValueChange={(value) => handleInputChange("industry_sector", value)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select sector" />
                     </SelectTrigger>
@@ -197,6 +201,7 @@ const DataInput = () => {
                       <SelectItem value="Environment">Environment</SelectItem>
                       <SelectItem value="Agriculture">Agriculture</SelectItem>
                       <SelectItem value="Social Services">Social Services</SelectItem>
+                      <SelectItem value="E-commerce">E-commerce</SelectItem>
                       <SelectItem value="Other">Other</SelectItem>
                     </SelectContent>
                   </Select>
@@ -221,54 +226,37 @@ const DataInput = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="programType">Program Type</Label>
-                  <Select value={formData.programType} onValueChange={(value) => handleInputChange("programType", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Accelerator">Accelerator</SelectItem>
-                      <SelectItem value="Incubator">Incubator</SelectItem>
-                      <SelectItem value="Funder">Funder</SelectItem>
-                      <SelectItem value="Social Enterprise">Social Enterprise</SelectItem>
-                      <SelectItem value="NGO">NGO</SelectItem>
-                      <SelectItem value="Government Agency">Government Agency</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="contactEmail">Contact Email</Label>
+                  <Label htmlFor="founding_year">Founding Year</Label>
                   <Input
-                    id="contactEmail"
-                    type="email"
-                    value={formData.contactEmail}
-                    onChange={(e) => handleInputChange("contactEmail", e.target.value)}
-                    placeholder="contact@organization.com"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="contactPhone">Contact Phone</Label>
-                  <Input
-                    id="contactPhone"
-                    value={formData.contactPhone}
-                    onChange={(e) => handleInputChange("contactPhone", e.target.value)}
-                    placeholder="+60 3-1234 5678"
+                    id="founding_year"
+                    type="number"
+                    value={formData.founding_year}
+                    onChange={(e) => handleInputChange("founding_year", e.target.value)}
+                    placeholder="2024"
+                    min="1990"
+                    max={new Date().getFullYear()}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes">Additional Notes</Label>
+                <Label htmlFor="contact_info">Contact Information</Label>
                 <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => handleInputChange("notes", e.target.value)}
-                  placeholder="Any additional information about funding, programs, or special focus areas"
+                  id="contact_info"
+                  value={formData.contact_info}
+                  onChange={(e) => handleInputChange("contact_info", e.target.value)}
+                  placeholder="Email, phone, or other contact details"
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="related_news_updates">Related News & Updates</Label>
+                <Textarea
+                  id="related_news_updates"
+                  value={formData.related_news_updates}
+                  onChange={(e) => handleInputChange("related_news_updates", e.target.value)}
+                  placeholder="Recent news, funding rounds, achievements, or other relevant updates"
                   rows={3}
                 />
               </div>
@@ -280,7 +268,7 @@ const DataInput = () => {
                   className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 px-8 py-2"
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {isSubmitting ? "Submitting..." : "Submit Contribution"}
+                  {isSubmitting ? "Submitting..." : "Submit Startup"}
                 </Button>
               </div>
             </form>
@@ -289,7 +277,7 @@ const DataInput = () => {
 
         <div className="mt-8 text-center text-sm text-gray-600">
           <p>
-            * Required fields. All submissions are reviewed before being added to the database.
+            * Required fields. All submissions are added directly to our database.
           </p>
         </div>
       </div>
