@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +35,7 @@ const AdminPanel = () => {
   ]);
   const [newUrl, setNewUrl] = useState("");
   const [bulkUrls, setBulkUrls] = useState("");
+  const [urlType, setUrlType] = useState<"vc" | "startup">("startup");
   const [isScrapingActive, setIsScrapingActive] = useState(false);
 
   useEffect(() => {
@@ -85,14 +87,36 @@ const AdminPanel = () => {
     });
   };
 
-  const addUrl = () => {
+  const submitUrlToDatabase = async (url: string) => {
+    const tableName = urlType === "vc" ? "grant_urls" : "startup_urls";
+    
+    const { error } = await supabase
+      .from(tableName)
+      .insert({ url });
+
+    if (error) {
+      console.error(`Error submitting URL to ${tableName}:`, error);
+      throw error;
+    }
+  };
+
+  const addUrl = async () => {
     if (newUrl.trim() && !urls.includes(newUrl.trim())) {
-      setUrls([...urls, newUrl.trim()]);
-      setNewUrl("");
-      toast({
-        title: "URL Added",
-        description: "New URL has been added to the scraping list.",
-      });
+      try {
+        await submitUrlToDatabase(newUrl.trim());
+        setUrls([...urls, newUrl.trim()]);
+        setNewUrl("");
+        toast({
+          title: "URL Added",
+          description: `New URL has been added to the ${urlType === "vc" ? "VC" : "startup"} scraping list and database.`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to add URL to database.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -104,19 +128,32 @@ const AdminPanel = () => {
     });
   };
 
-  const addBulkUrls = () => {
+  const addBulkUrls = async () => {
     const newUrls = bulkUrls
       .split('\n')
       .map(url => url.trim())
       .filter(url => url && !urls.includes(url));
     
     if (newUrls.length > 0) {
-      setUrls([...urls, ...newUrls]);
-      setBulkUrls("");
-      toast({
-        title: "URLs Added",
-        description: `${newUrls.length} URLs have been added to the scraping list.`,
-      });
+      try {
+        // Submit all URLs to the database
+        for (const url of newUrls) {
+          await submitUrlToDatabase(url);
+        }
+        
+        setUrls([...urls, ...newUrls]);
+        setBulkUrls("");
+        toast({
+          title: "URLs Added",
+          description: `${newUrls.length} URLs have been added to the ${urlType === "vc" ? "VC" : "startup"} scraping list and database.`,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to add some URLs to database.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -131,11 +168,11 @@ const AdminPanel = () => {
     }
 
     setIsScrapingActive(true);
-    console.log("Starting scraping for URLs:", urls);
+    console.log(`Starting ${urlType} scraping for URLs:`, urls);
     
     toast({
       title: "Scraping Started",
-      description: `Initiated scraping for ${urls.length} URLs. This may take several minutes.`,
+      description: `Initiated ${urlType === "vc" ? "VC" : "startup"} scraping for ${urls.length} URLs. This may take several minutes.`,
     });
 
     // Simulate scraping process
@@ -143,7 +180,7 @@ const AdminPanel = () => {
       setIsScrapingActive(false);
       toast({
         title: "Scraping Complete",
-        description: "Data extraction completed. New entries have been added to the database.",
+        description: `${urlType === "vc" ? "VC" : "Startup"} data extraction completed. New entries have been added to the database.`,
       });
     }, 5000);
   };
@@ -151,6 +188,7 @@ const AdminPanel = () => {
   const exportData = () => {
     const data = JSON.stringify({
       urls,
+      urlType,
       scrapedData: [
         { name: "Sample Organization", sector: "Technology", location: "KL" }
       ],
@@ -161,12 +199,12 @@ const AdminPanel = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `asbhive-data-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `asbhive-${urlType}-data-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     
     toast({
       title: "Data Exported",
-      description: "Data has been exported to JSON file.",
+      description: `${urlType === "vc" ? "VC" : "Startup"} data has been exported to JSON file.`,
     });
   };
 
@@ -234,12 +272,32 @@ const AdminPanel = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* URL Type Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Select URL Type</label>
+              <Select value={urlType} onValueChange={(value: "vc" | "startup") => setUrlType(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select URL type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="startup">Startup URLs (startup_urls table)</SelectItem>
+                  <SelectItem value="vc">VC/Grant URLs (grant_urls table)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                {urlType === "vc" 
+                  ? "URLs will be saved to grant_urls table for VC/Grant program scraping"
+                  : "URLs will be saved to startup_urls table for startup scraping"
+                }
+              </p>
+            </div>
+
             {/* Single URL Input */}
             <div className="flex gap-2">
               <Input
                 value={newUrl}
                 onChange={(e) => setNewUrl(e.target.value)}
-                placeholder="Enter URL to scrape (e.g., https://example.com)"
+                placeholder={`Enter ${urlType === "vc" ? "VC/Grant" : "startup"} URL to scrape (e.g., https://example.com)`}
                 className="flex-1"
                 onKeyPress={(e) => e.key === 'Enter' && addUrl()}
               />
@@ -251,7 +309,9 @@ const AdminPanel = () => {
 
             {/* Bulk URL Input */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Bulk Add URLs (one per line)</label>
+              <label className="text-sm font-medium text-gray-700">
+                Bulk Add {urlType === "vc" ? "VC/Grant" : "Startup"} URLs (one per line)
+              </label>
               <Textarea
                 value={bulkUrls}
                 onChange={(e) => setBulkUrls(e.target.value)}
@@ -268,7 +328,7 @@ const AdminPanel = () => {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <h3 className="font-medium text-gray-900">
-                  Current URLs ({urls.length})
+                  Current {urlType === "vc" ? "VC/Grant" : "Startup"} URLs ({urls.length})
                 </h3>
                 <Badge variant="outline" className="text-green-700 border-green-300">
                   {urls.length} sources
@@ -302,7 +362,7 @@ const AdminPanel = () => {
         <Card className="bg-white/90 backdrop-blur-sm shadow-lg mb-6">
           <CardHeader>
             <CardTitle className="text-xl text-gray-900">
-              Data Scraping
+              {urlType === "vc" ? "VC/Grant" : "Startup"} Data Scraping
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -312,7 +372,7 @@ const AdminPanel = () => {
                 disabled={isScrapingActive || urls.length === 0}
                 className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
               >
-                {isScrapingActive ? "Scraping..." : "Start Scraping"}
+                {isScrapingActive ? "Scraping..." : `Start ${urlType === "vc" ? "VC/Grant" : "Startup"} Scraping`}
               </Button>
               
               <Button
@@ -329,7 +389,9 @@ const AdminPanel = () => {
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                  <span className="text-blue-800">Scraping in progress... This may take several minutes.</span>
+                  <span className="text-blue-800">
+                    {urlType === "vc" ? "VC/Grant" : "Startup"} scraping in progress... This may take several minutes.
+                  </span>
                 </div>
               </div>
             )}
