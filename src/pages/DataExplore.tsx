@@ -10,6 +10,7 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface Organization {
   id: string | number;
@@ -43,6 +44,9 @@ const DataExplore = () => {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<string>("");
+
+  const [showRawData, setShowRawData] = useState(false);
+  const [rawStartupData, setRawStartupData] = useState<any[]>([]);
 
   // Test Supabase connection
   const testConnection = async () => {
@@ -222,6 +226,38 @@ const DataExplore = () => {
     setAiPrompt("");
   };
 
+  // Manual fetch function to show raw data
+  const fetchRawStartupData = async () => {
+    try {
+      console.log("Manually fetching ALL data from startup table...");
+      const { data, error } = await supabase
+        .from('startup')
+        .select('*');
+      
+      if (error) {
+        console.error('Error fetching raw startup data:', error);
+        toast.error(`Error: ${error.message}`);
+        return;
+      }
+
+      console.log('Raw startup table data:', data);
+      console.log('Total rows in startup table:', data?.length || 0);
+      
+      if (data && data.length > 0) {
+        data.forEach((row, index) => {
+          console.log(`Row ${index + 1}:`, row);
+        });
+      }
+      
+      setRawStartupData(data || []);
+      setShowRawData(true);
+      toast.success(`Found ${data?.length || 0} rows in startup table`);
+    } catch (error) {
+      console.error('Unexpected error fetching raw data:', error);
+      toast.error('Failed to fetch raw data');
+    }
+  };
+
   // Generate dynamic filter options from actual data
   const sectors = [...new Set(organizations.map(item => item.sector))].filter(Boolean);
   const locations = [...new Set(organizations.map(item => item.location))].filter(Boolean);
@@ -257,6 +293,60 @@ const DataExplore = () => {
             <p className="text-sm text-gray-500 mt-2">
               Connection Status: {connectionStatus}
             </p>
+          )}
+        </div>
+
+        {/* Debug Section - Manual Data Fetch */}
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Debug: Manual Data Fetch</h3>
+          <p className="text-red-700 mb-4">Click below to manually fetch and display raw data from the startup table:</p>
+          <div className="flex gap-3 mb-4">
+            <Button onClick={fetchRawStartupData} variant="outline" className="border-red-300">
+              Fetch Raw Startup Data
+            </Button>
+            {showRawData && (
+              <Button onClick={() => setShowRawData(false)} variant="outline">
+                Hide Raw Data
+              </Button>
+            )}
+          </div>
+          
+          {showRawData && (
+            <div className="mt-4">
+              <h4 className="font-medium text-red-800 mb-2">Raw Startup Table Data ({rawStartupData.length} rows):</h4>
+              {rawStartupData.length > 0 ? (
+                <div className="bg-white rounded border max-h-96 overflow-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>No</TableHead>
+                        <TableHead>Company Name</TableHead>
+                        <TableHead>What They Do</TableHead>
+                        <TableHead>Sector</TableHead>
+                        <TableHead>Location</TableHead>
+                        <TableHead>Year Founded</TableHead>
+                        <TableHead>Website</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {rawStartupData.map((row, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{row.No || 'N/A'}</TableCell>
+                          <TableCell>{row["Company Name"] || 'N/A'}</TableCell>
+                          <TableCell className="max-w-xs truncate">{row["What They Do"] || 'N/A'}</TableCell>
+                          <TableCell>{row.Sector || 'N/A'}</TableCell>
+                          <TableCell>{row.Location || 'N/A'}</TableCell>
+                          <TableCell>{row["Year Founded"] || 'N/A'}</TableCell>
+                          <TableCell className="max-w-xs truncate">{row["Website/Social Media"] || 'N/A'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <p className="text-red-600 bg-white p-4 rounded border">No data found in startup table</p>
+              )}
+            </div>
           )}
         </div>
 
