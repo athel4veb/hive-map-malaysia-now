@@ -102,7 +102,7 @@ export type Database = {
           InstitutionalSupport: string | null
           Location: string | null
           MaGICAccredited: string | null
-          No: number | null
+          No: number
           ProblemTheySolve: string | null
           RevenueModel: string | null
           Sector: string | null
@@ -119,7 +119,7 @@ export type Database = {
           InstitutionalSupport?: string | null
           Location?: string | null
           MaGICAccredited?: string | null
-          No?: number | null
+          No: number
           ProblemTheySolve?: string | null
           RevenueModel?: string | null
           Sector?: string | null
@@ -136,7 +136,7 @@ export type Database = {
           InstitutionalSupport?: string | null
           Location?: string | null
           MaGICAccredited?: string | null
-          No?: number | null
+          No?: number
           ProblemTheySolve?: string | null
           RevenueModel?: string | null
           Sector?: string | null

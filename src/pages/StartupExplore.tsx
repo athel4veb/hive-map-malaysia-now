@@ -1,11 +1,11 @@
-
 import { useState, useEffect } from "react";
-import { Building2, MapPin, ExternalLink, Calendar, Award, Target, TrendingUp, Users, Sparkles, Loader2 } from "lucide-react";
+import { Building2, MapPin, ExternalLink, Calendar, Award, Target, TrendingUp, Users, Sparkles, Loader2, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -45,7 +45,8 @@ const StartupExplore = () => {
   const [filteredStartups, setFilteredStartups] = useState<Startup[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSector, setSelectedSector] = useState<string | null>(null);
+  const [sectorFilter, setSectorFilter] = useState("all");
+  const [locationFilter, setLocationFilter] = useState("all");
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiMatches, setAiMatches] = useState<Startup[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -57,7 +58,7 @@ const StartupExplore = () => {
 
   useEffect(() => {
     filterStartups();
-  }, [startups, searchTerm, selectedSector, showAiResults, aiMatches]);
+  }, [startups, searchTerm, sectorFilter, locationFilter, showAiResults, aiMatches]);
 
   const fetchStartups = async () => {
     try {
@@ -123,8 +124,12 @@ const StartupExplore = () => {
       );
     }
 
-    if (selectedSector) {
-      filtered = filtered.filter(startup => startup.sector === selectedSector);
+    if (sectorFilter !== "all") {
+      filtered = filtered.filter(startup => startup.sector === sectorFilter);
+    }
+
+    if (locationFilter !== "all") {
+      filtered = filtered.filter(startup => startup.location === locationFilter);
     }
 
     setFilteredStartups(filtered);
@@ -183,11 +188,7 @@ const StartupExplore = () => {
   };
 
   const sectors = [...new Set(startups.map(s => s.sector))].filter(Boolean).sort();
-
-  const sectorStats = sectors.map(sector => ({
-    name: sector,
-    count: startups.filter(s => s.sector === sector).length
-  }));
+  const locations = [...new Set(startups.map(s => s.location))].filter(Boolean).sort();
 
   if (loading) {
     return (
@@ -204,15 +205,14 @@ const StartupExplore = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-blue-100">
       <Navbar />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            <Building2 className="inline-block mr-3 h-10 w-10 text-blue-600" />
-            Startup Directory
+            Discover Startups
           </h1>
           <p className="text-lg text-gray-600">
-            Explore {startups.length} startups driving social impact in Malaysia
+            Explore {startups.length} startups in Malaysia's social enterprise ecosystem
           </p>
         </div>
 
@@ -259,264 +259,185 @@ const StartupExplore = () => {
           </div>
         </div>
 
-        {/* Search and Filter */}
+        {/* Traditional Search and Filters */}
         <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 mb-8 shadow-sm">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search startups by name, sector, or description..."
+                placeholder="Search startups..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
+                className="pl-10"
                 disabled={showAiResults}
               />
             </div>
-            <Button
-              variant={selectedSector ? "default" : "outline"}
-              onClick={() => setSelectedSector(null)}
-              className="whitespace-nowrap"
-            >
-              All Sectors ({startups.length})
-            </Button>
+            
+            <Select value={sectorFilter} onValueChange={setSectorFilter} disabled={showAiResults}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Sectors" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sectors</SelectItem>
+                {sectors.map(sector => (
+                  <SelectItem key={sector} value={sector}>{sector}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={locationFilter} onValueChange={setLocationFilter} disabled={showAiResults}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Locations" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map(location => (
+                  <SelectItem key={location} value={location}>{location}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
-          {/* Sector Filter Buttons */}
-          <div className="flex flex-wrap gap-2 mt-4">
-            {sectorStats.slice(0, 8).map(sector => (
-              <Button
-                key={sector.name}
-                variant={selectedSector === sector.name ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedSector(selectedSector === sector.name ? null : sector.name)}
-                className="text-xs"
-                disabled={showAiResults}
-              >
-                {sector.name} ({sector.count})
-              </Button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-4">
+          <div className="flex flex-wrap gap-2">
             <Badge variant="outline" className="text-blue-700 border-blue-300">
               {filteredStartups.length} results
               {showAiResults && <span className="ml-1">(AI matches)</span>}
             </Badge>
+            {sectorFilter !== "all" && (
+              <Badge variant="secondary" onClick={() => setSectorFilter("all")} className="cursor-pointer">
+                Sector: {sectorFilter} ×
+              </Badge>
+            )}
+            {locationFilter !== "all" && (
+              <Badge variant="secondary" onClick={() => setLocationFilter("all")} className="cursor-pointer">
+                Location: {locationFilter} ×
+              </Badge>
+            )}
           </div>
         </div>
 
-        <Tabs defaultValue="grid" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white/80">
-            <TabsTrigger value="grid">Grid View</TabsTrigger>
-            <TabsTrigger value="table">Table View</TabsTrigger>
-            <TabsTrigger value="sectors">By Sector</TabsTrigger>
-          </TabsList>
-
-          {/* Grid View */}
-          <TabsContent value="grid" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {filteredStartups.map(startup => (
-                <Card key={startup.id} className={`hover:shadow-lg transition-shadow bg-white/90 backdrop-blur-sm ${startup.isAiMatch ? 'border-2 border-blue-300' : ''}`}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="text-xl text-gray-900 mb-2 line-clamp-2">
-                          {startup.companyName}
-                        </CardTitle>
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          <Badge className="bg-blue-500 text-white hover:bg-blue-600">
-                            Startup
-                          </Badge>
-                          <Badge variant="outline" className="text-blue-700 border-blue-300">
-                            {startup.sector}
-                          </Badge>
-                          {startup.yearFounded && (
-                            <Badge variant="outline" className="text-gray-700">
-                              <Calendar className="h-3 w-3 mr-1" />
-                              {startup.yearFounded}
-                            </Badge>
-                          )}
-                          {startup.magicAccredited === 'Yes' && (
-                            <Badge className="bg-purple-500 text-white">
-                              <Award className="h-3 w-3 mr-1" />
-                              MaGIC
-                            </Badge>
-                          )}
-                          {startup.isAiMatch && startup.matchPercentage && (
-                            <Badge className="bg-purple-500 text-white">
-                              {startup.matchPercentage}% match
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      {startup.website && (
-                        <a 
-                          href={startup.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-gray-400 hover:text-blue-600 transition-colors"
-                        >
-                          <ExternalLink className="h-5 w-5" />
-                        </a>
-                      )}
-                      {startup.isAiMatch && (
-                        <Sparkles className="h-5 w-5 text-blue-600" />
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <MapPin className="h-4 w-4 mr-1" />
-                      {startup.location}
-                    </div>
-                    
-                    {startup.whatTheyDo && (
-                      <p className="text-gray-600">{startup.whatTheyDo}</p>
-                    )}
-                    
-                    {startup.isAiMatch && startup.reasons && (
-                      <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                        <h4 className="text-sm font-medium text-blue-800 mb-2">Why this is a good match:</h4>
-                        <ul className="text-sm text-blue-700 space-y-1">
-                          {startup.reasons.map((reason: string, index: number) => (
-                            <li key={index} className="flex items-start">
-                              <span className="text-blue-500 mr-1">•</span>
-                              {reason}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    
-                    {startup.problemTheySolve && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Problem They Solve:</h4>
-                        <p className="text-sm text-gray-600 line-clamp-2">{startup.problemTheySolve}</p>
-                      </div>
-                    )}
-
-                    {startup.targetBeneficiaries && (
-                      <div className="bg-blue-50 rounded-lg p-2">
-                        <div className="flex items-center text-xs font-medium text-blue-800 mb-1">
-                          <Users className="h-3 w-3 mr-1" />
-                          Target Beneficiaries
-                        </div>
-                        <p className="text-xs text-blue-700 line-clamp-2">{startup.targetBeneficiaries}</p>
-                      </div>
-                    )}
-                    
-                    {startup.impact && (
-                      <div className="bg-green-50 rounded-lg p-2">
-                        <div className="flex items-center text-xs font-medium text-green-800 mb-1">
-                          <TrendingUp className="h-3 w-3 mr-1" />
-                          Impact
-                        </div>
-                        <p className="text-xs text-green-700 line-clamp-2">{startup.impact}</p>
-                      </div>
-                    )}
-
-                    {startup.awards && (
-                      <div className="bg-yellow-50 rounded-lg p-3">
-                        <h4 className="text-sm font-medium text-yellow-700 mb-1">Awards:</h4>
-                        <p className="text-sm text-yellow-600">{startup.awards}</p>
-                      </div>
-                    )}
-
-                    {startup.grants && (
-                      <div className="bg-indigo-50 rounded-lg p-3">
-                        <h4 className="text-sm font-medium text-indigo-700 mb-1">Grants:</h4>
-                        <p className="text-sm text-indigo-600">{startup.grants}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-            
-            {filteredStartups.length === 0 && (
-              <div className="text-center py-12">
-                <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No startups found</h3>
-                <p className="text-gray-600">
-                  {startups.length === 0 
-                    ? "No startup data available. Please check if the startup table contains data." 
-                    : "Try adjusting your search terms or filters"
-                  }
-                </p>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Table View */}
-          <TabsContent value="table">
-            <Card className="bg-white/90">
+        {/* Results Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {filteredStartups.map(startup => (
+            <Card key={startup.id} className={`hover:shadow-lg transition-shadow bg-white/90 backdrop-blur-sm ${startup.isAiMatch ? 'border-2 border-blue-300' : ''}`}>
               <CardHeader>
-                <CardTitle>Startup Directory ({filteredStartups.length} results)</CardTitle>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-xl text-gray-900 mb-2">{startup.companyName}</CardTitle>
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <Badge className="bg-blue-500 text-white hover:bg-blue-600">
+                        Startup
+                      </Badge>
+                      {startup.sector && startup.sector.split(',').map((sector, index) => (
+                        <Badge key={index} variant="outline" className="border-blue-300 text-blue-700">
+                          {sector.trim()}
+                        </Badge>
+                      ))}
+                      {startup.yearFounded && (
+                        <Badge variant="outline" className="border-gray-300 text-gray-700">
+                          Founded {startup.yearFounded}
+                        </Badge>
+                      )}
+                      {startup.magicAccredited && startup.magicAccredited.toLowerCase() === 'yes' && (
+                        <Badge variant="outline" className="border-purple-300 text-purple-700">
+                          MaGIC Accredited
+                        </Badge>
+                      )}
+                      {startup.isAiMatch && startup.matchPercentage && (
+                        <Badge className="bg-purple-500 text-white">
+                          {startup.matchPercentage}% match
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {startup.website && startup.website !== "#" && (
+                    <a 
+                      href={startup.website} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-gray-400 hover:text-blue-600 transition-colors"
+                    >
+                      <ExternalLink className="h-5 w-5" />
+                    </a>
+                  )}
+                  {startup.isAiMatch && (
+                    <Sparkles className="h-5 w-5 text-blue-600" />
+                  )}
+                </div>
               </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Company</TableHead>
-                      <TableHead>Sector</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Founded</TableHead>
-                      <TableHead>MaGIC</TableHead>
-                      <TableHead>Website</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStartups.map(startup => (
-                      <TableRow key={startup.id}>
-                        <TableCell className="font-medium">{startup.companyName}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="text-xs">{startup.sector}</Badge>
-                        </TableCell>
-                        <TableCell>{startup.location}</TableCell>
-                        <TableCell>{startup.yearFounded || '-'}</TableCell>
-                        <TableCell>
-                          {startup.magicAccredited === 'Yes' ? (
-                            <Badge className="bg-purple-500 text-white text-xs">Yes</Badge>
-                          ) : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {startup.website ? (
-                            <a 
-                              href={startup.website} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800"
-                            >
-                              <ExternalLink className="h-4 w-4" />
-                            </a>
-                          ) : '-'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <CardContent className="space-y-4">
+                <p className="text-gray-600">{startup.whatTheyDo}</p>
+                
+                <div className="flex items-center text-sm text-gray-500">
+                  <MapPin className="h-4 w-4 mr-1" />
+                  {startup.location}
+                </div>
+                
+                {startup.isAiMatch && startup.reasons && (
+                  <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <h4 className="text-sm font-medium text-blue-800 mb-2">Why this is a good match:</h4>
+                    <ul className="text-sm text-blue-700 space-y-1">
+                      {startup.reasons.map((reason: string, index: number) => (
+                        <li key={index} className="flex items-start">
+                          <span className="text-blue-500 mr-1">•</span>
+                          {reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {startup.problemTheySolve && (
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-gray-700 mb-1">Problem They Solve:</h4>
+                    <p className="text-sm text-gray-600">{startup.problemTheySolve}</p>
+                  </div>
+                )}
+
+                {startup.targetBeneficiaries && (
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-blue-700 mb-1">Target Beneficiaries:</h4>
+                    <p className="text-sm text-blue-600">{startup.targetBeneficiaries}</p>
+                  </div>
+                )}
+
+                {startup.impact && (
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-green-700 mb-1">Impact:</h4>
+                    <p className="text-sm text-green-600">{startup.impact}</p>
+                  </div>
+                )}
+
+                {startup.awards && (
+                  <div className="bg-yellow-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-yellow-700 mb-1">Awards:</h4>
+                    <p className="text-sm text-yellow-600">{startup.awards}</p>
+                  </div>
+                )}
+
+                {startup.grants && (
+                  <div className="bg-indigo-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-indigo-700 mb-1">Grants:</h4>
+                    <p className="text-sm text-indigo-600">{startup.grants}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
-          </TabsContent>
+          ))}
+        </div>
 
-          {/* Sectors View */}
-          <TabsContent value="sectors">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {sectorStats.map(sector => (
-                <Card 
-                  key={sector.name} 
-                  className="hover:shadow-lg transition-shadow cursor-pointer bg-white/90"
-                  onClick={() => setSelectedSector(sector.name)}
-                >
-                  <CardHeader>
-                    <CardTitle className="text-lg">{sector.name}</CardTitle>
-                    <p className="text-2xl font-bold text-blue-600">{sector.count}</p>
-                    <p className="text-sm text-gray-600">startups</p>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
+        {filteredStartups.length === 0 && !loading && (
+          <div className="text-center py-12">
+            <Filter className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
+            <p className="text-gray-600">
+              {startups.length === 0 
+                ? "No startup data available. Please check if the startup table contains data." 
+                : "Try adjusting your search terms or filters"
+              }
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
