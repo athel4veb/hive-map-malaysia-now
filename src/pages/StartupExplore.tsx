@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Building2, MapPin, ExternalLink, Calendar, Award, Target, TrendingUp, Users, Sparkles, Loader2, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -143,6 +144,63 @@ const StartupExplore = () => {
 
     setIsAiLoading(true);
     try {
+      console.log('Calling AI matchmaker with prompt:', aiPrompt);
+      
+      // Call the AI matchmaker edge function
+      const { data, error } = await supabase.functions.invoke('ai-matchmaker', {
+        body: {
+          userType: 'vc', // We're looking for startups from a VC perspective
+          prompt: aiPrompt
+        }
+      });
+
+      if (error) {
+        console.error('AI matchmaker error:', error);
+        throw new Error(error.message || 'Failed to get AI recommendations');
+      }
+
+      console.log('AI matchmaker response:', data);
+
+      if (data?.matches && Array.isArray(data.matches)) {
+        // Transform AI matches to match our Startup interface
+        const mappedMatches: Startup[] = data.matches.map((match: any) => ({
+          id: `ai-${match.id || match.name}`,
+          companyName: match.name || match.companyName || 'Unknown Company',
+          sector: match.sectors?.join(', ') || match.sector || 'Unspecified',
+          location: match.regions?.join(', ') || match.location || 'Malaysia',
+          yearFounded: match.yearFounded,
+          whatTheyDo: match.description || match.whatTheyDo || '',
+          problemTheySolve: match.problemTheySolve || '',
+          targetBeneficiaries: match.targetBeneficiaries || '',
+          revenueModel: match.revenueModel || '',
+          impact: match.impact || '',
+          awards: match.awards || '',
+          grants: match.grants || '',
+          institutionalSupport: match.institutionalSupport || '',
+          magicAccredited: match.magicAccredited || '',
+          website: match.website || '',
+          matchPercentage: match.matchPercentage || 0,
+          reasons: match.reasons || [],
+          isAiMatch: true
+        }));
+
+        setAiMatches(mappedMatches);
+        setShowAiResults(true);
+        
+        if (mappedMatches.length === 0) {
+          toast.info("No matches found for your criteria. Try adjusting your description.");
+        } else {
+          toast.success(`Found ${mappedMatches.length} AI-powered matches!`);
+        }
+      } else {
+        throw new Error('Invalid response format from AI matchmaker');
+      }
+    } catch (error) {
+      console.error('AI search error:', error);
+      toast.error(`Failed to get AI recommendations: ${error.message}`);
+      
+      // Fallback to local search if AI fails
+      console.log('Falling back to local keyword search...');
       const searchResults = startups.filter(startup => {
         const searchText = `${startup.companyName} ${startup.whatTheyDo} ${startup.sector} ${startup.problemTheySolve} ${startup.targetBeneficiaries} ${startup.revenueModel} ${startup.impact}`.toLowerCase();
         const promptKeywords = aiPrompt.toLowerCase().split(' ');
@@ -152,12 +210,12 @@ const StartupExplore = () => {
         );
       });
 
-      const mappedMatches: Startup[] = searchResults.slice(0, 10).map((match, index) => ({
+      const fallbackMatches: Startup[] = searchResults.slice(0, 10).map((match, index) => ({
         ...match,
-        id: `ai-${match.id}`,
+        id: `fallback-${match.id}`,
         matchPercentage: Math.floor(Math.random() * 30) + 70,
         reasons: [
-          `Strong alignment with "${aiPrompt.substring(0, 50)}..."`,
+          `Keyword match with "${aiPrompt.substring(0, 50)}..."`,
           `Relevant sector: ${match.sector}`,
           `Active in ${match.location}`,
           match.targetBeneficiaries ? `Target beneficiaries: ${match.targetBeneficiaries}` : ''
@@ -165,17 +223,12 @@ const StartupExplore = () => {
         isAiMatch: true
       }));
 
-      setAiMatches(mappedMatches);
+      setAiMatches(fallbackMatches);
       setShowAiResults(true);
       
-      if (mappedMatches.length === 0) {
-        toast.info("No matches found for your criteria. Try adjusting your description.");
-      } else {
-        toast.success(`Found ${mappedMatches.length} AI-powered matches!`);
+      if (fallbackMatches.length > 0) {
+        toast.info(`Using keyword search: found ${fallbackMatches.length} matches`);
       }
-    } catch (error) {
-      console.error('AI search error:', error);
-      toast.error("Failed to get AI recommendations. Please try again.");
     } finally {
       setIsAiLoading(false);
     }
