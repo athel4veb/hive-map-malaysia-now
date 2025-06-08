@@ -1,4 +1,3 @@
-
 import { useState, useMemo, useEffect } from "react";
 import { Search, Filter, MapPin, Globe, Mail, Phone, ExternalLink, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,6 +42,37 @@ const DataExplore = () => {
   const [showAiResults, setShowAiResults] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [connectionStatus, setConnectionStatus] = useState<string>("");
+
+  // Test Supabase connection
+  const testConnection = async () => {
+    try {
+      console.log("Testing Supabase connection...");
+      setConnectionStatus("Testing connection...");
+      
+      // Test basic connection
+      const { data: connectionTest, error: connectionError } = await supabase
+        .from('startup')
+        .select('count', { count: 'exact', head: true });
+      
+      if (connectionError) {
+        console.error('Connection error:', connectionError);
+        setConnectionStatus(`Connection failed: ${connectionError.message}`);
+        toast.error(`Connection failed: ${connectionError.message}`);
+        return false;
+      }
+      
+      console.log('Connection successful, row count:', connectionTest);
+      setConnectionStatus(`Connected successfully. Startup table has ${connectionTest || 0} rows.`);
+      toast.success("Supabase connection successful!");
+      return true;
+    } catch (error) {
+      console.error('Unexpected error:', error);
+      setConnectionStatus(`Unexpected error: ${error}`);
+      toast.error("Connection test failed");
+      return false;
+    }
+  };
 
   // Fetch data from Supabase
   useEffect(() => {
@@ -50,24 +80,36 @@ const DataExplore = () => {
       try {
         setLoading(true);
         
-        // Fetch startups only
+        // Test connection first
+        const isConnected = await testConnection();
+        if (!isConnected) {
+          setLoading(false);
+          return;
+        }
+        
+        // Fetch startups
+        console.log("Fetching startup data...");
         const { data: startups, error: startupError } = await supabase
           .from('startup')
           .select('*');
         
         if (startupError) {
           console.error('Error fetching startups:', startupError);
-          toast.error('Failed to fetch startups');
+          toast.error(`Failed to fetch startups: ${startupError.message}`);
+          setLoading(false);
+          return;
         }
 
         console.log('Raw startups data:', startups);
+        console.log('Number of startups found:', startups?.length || 0);
 
         // Transform data to unified format
         const transformedData: Organization[] = [];
 
-        // Transform startups - using correct column names from the database schema
+        // Transform startups
         if (startups && startups.length > 0) {
           startups.forEach((startup) => {
+            console.log('Processing startup:', startup);
             transformedData.push({
               id: `startup-${startup.No || Math.random()}`,
               name: startup["Company Name"] || 'Unknown Startup',
@@ -86,10 +128,13 @@ const DataExplore = () => {
               grants: startup.Grants || ''
             });
           });
+        } else {
+          console.log('No startup data found in database');
+          toast.info("No startup data found in the database");
         }
 
         console.log('Transformed data:', transformedData);
-        console.log('Total startups:', transformedData.length);
+        console.log('Total organizations:', transformedData.length);
         
         setOrganizations(transformedData);
       } catch (error) {
@@ -186,7 +231,10 @@ const DataExplore = () => {
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading startup ecosystem data...</p>
+          <p className="text-gray-600">Testing Supabase connection and loading data...</p>
+          {connectionStatus && (
+            <p className="text-sm text-gray-500 mt-2">{connectionStatus}</p>
+          )}
         </div>
       </div>
     );
@@ -205,6 +253,11 @@ const DataExplore = () => {
           <p className="text-lg text-gray-600">
             Explore {organizations.length} startups in Malaysia's social enterprise ecosystem
           </p>
+          {connectionStatus && (
+            <p className="text-sm text-gray-500 mt-2">
+              Connection Status: {connectionStatus}
+            </p>
+          )}
         </div>
 
         {/* AI-Powered Search Section */}
