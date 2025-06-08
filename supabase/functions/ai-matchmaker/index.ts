@@ -3,7 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -64,24 +64,56 @@ serve(async (req) => {
     
     Be specific about why each match makes sense. Match percentages should reflect realistic compatibility.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please analyze and provide matches for: ${prompt}` }
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemPrompt}\n\nPlease analyze and provide matches for: ${prompt}`
+              }
+            ]
+          }
         ],
-        temperature: 0.7,
+        generationConfig: {
+          temperature: 0.7,
+          topK: 1,
+          topP: 1,
+          maxOutputTokens: 2048,
+        },
+        safetySettings: [
+          {
+            category: "HARM_CATEGORY_HARASSMENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_HATE_SPEECH",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          },
+          {
+            category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+            threshold: "BLOCK_MEDIUM_AND_ABOVE"
+          }
+        ]
       }),
     });
 
     const aiData = await response.json();
-    const aiMatches = JSON.parse(aiData.choices[0].message.content);
+    
+    if (!aiData.candidates || !aiData.candidates[0] || !aiData.candidates[0].content) {
+      throw new Error('Invalid response from Gemini API');
+    }
+    
+    const aiResponse = aiData.candidates[0].content.parts[0].text;
+    const aiMatches = JSON.parse(aiResponse);
 
     // Enrich AI matches with full profile data
     const enrichedMatches = aiMatches.map((aiMatch: any) => {
