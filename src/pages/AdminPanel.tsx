@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Globe, Download, Upload, LogOut, User, FileUp } from "lucide-react";
+import { Plus, Trash2, Globe, Download, Upload, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,7 +10,6 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
-import Papa from 'papaparse';
 
 interface UserProfile {
   id: string;
@@ -22,32 +20,12 @@ interface UserProfile {
   created_at: string;
 }
 
-interface CSVRow {
-  'No': string;
-  'Company Name': string;
-  'What They Do': string;
-  'Location': string;
-  'Impact': string;
-  'Problem They Solve': string;
-  'Grants': string;
-  'Institutional Support': string;
-  'MaGIC Accredited': string;
-  'Sector': string;
-  'Website/Social Media': string;
-  'Target Beneficiaries': string;
-  'Revenue Model': string;
-  'Year Founded': string;
-  'Awards': string;
-}
-
 const AdminPanel = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [csvFile, setCsvFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [urls, setUrls] = useState([
     "https://www.adb.org/countries/malaysia/social-enterprises",
     "https://www.sbc.org.my/directory",
@@ -103,100 +81,6 @@ const AdminPanel = () => {
     toast({
       title: "Logged out",
       description: "You have been logged out successfully.",
-    });
-  };
-
-  const handleCsvFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type === 'text/csv') {
-      setCsvFile(file);
-    } else {
-      toast({
-        title: "Invalid File",
-        description: "Please select a valid CSV file.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const uploadCsvData = async () => {
-    if (!csvFile) {
-      toast({
-        title: "No File Selected",
-        description: "Please select a CSV file first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsUploading(true);
-
-    Papa.parse(csvFile, {
-      header: true,
-      complete: async (results) => {
-        try {
-          const csvData = results.data as CSVRow[];
-          const validRows = csvData.filter(row => row['Company Name']?.trim());
-
-          const startupData = validRows.map(row => ({
-            company_name: row['Company Name']?.trim() || null,
-            what_they_do: row['What They Do']?.trim() || null,
-            location: row['Location']?.trim() || null,
-            impact: row['Impact']?.trim() || null,
-            problem_they_solve: row['Problem They Solve']?.trim() || null,
-            grants: row['Grants']?.trim() || null,
-            institutional_support: row['Institutional Support']?.trim() || null,
-            magic_accredited: row['MaGIC Accredited']?.trim() || null,
-            industry_sector: row['Sector']?.trim() || null,
-            website_url: row['Website/Social Media']?.trim() || null,
-            target_beneficiaries: row['Target Beneficiaries']?.trim() || null,
-            revenue_model: row['Revenue Model']?.trim() || null,
-            founding_year: row['Year Founded'] ? parseInt(row['Year Founded'].trim()) || null : null,
-            awards: row['Awards']?.trim() || null,
-            inserted_at: new Date().toISOString()
-          }));
-
-          console.log("Prepared startup data:", startupData);
-
-          const { data, error } = await supabase
-            .from('startups')
-            .insert(startupData);
-
-          if (error) {
-            console.error("Database error:", error);
-            throw error;
-          }
-
-          toast({
-            title: "Success!",
-            description: `Successfully uploaded ${validRows.length} startups to the database.`,
-          });
-
-          setCsvFile(null);
-          // Reset file input
-          const fileInput = document.getElementById('csv-upload') as HTMLInputElement;
-          if (fileInput) fileInput.value = '';
-
-        } catch (error) {
-          console.error("Error uploading CSV data:", error);
-          toast({
-            title: "Upload Failed",
-            description: "There was an error uploading the CSV data. Please check the file format and try again.",
-            variant: "destructive",
-          });
-        } finally {
-          setIsUploading(false);
-        }
-      },
-      error: (error) => {
-        console.error("CSV parsing error:", error);
-        toast({
-          title: "Parse Error",
-          description: "Failed to parse the CSV file. Please check the file format.",
-          variant: "destructive",
-        });
-        setIsUploading(false);
-      }
     });
   };
 
@@ -339,57 +223,6 @@ const AdminPanel = () => {
             Manage data sources and monitor scraping activities
           </p>
         </div>
-
-        {/* CSV Upload Section */}
-        <Card className="bg-white/90 backdrop-blur-sm shadow-lg mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center text-xl text-gray-900">
-              <FileUp className="h-5 w-5 mr-2" />
-              CSV Data Upload
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">
-                Upload Startup Data (CSV)
-              </label>
-              <div className="flex gap-2">
-                <Input
-                  id="csv-upload"
-                  type="file"
-                  accept=".csv"
-                  onChange={handleCsvFileChange}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={uploadCsvData}
-                  disabled={!csvFile || isUploading}
-                  className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {isUploading ? "Uploading..." : "Upload CSV"}
-                </Button>
-              </div>
-              {csvFile && (
-                <p className="text-sm text-green-600">
-                  Selected: {csvFile.name}
-                </p>
-              )}
-              <p className="text-xs text-gray-500">
-                Expected headers: No, Company Name, What They Do, Location, Impact, Problem They Solve, Grants, Institutional Support, MaGIC Accredited, Sector, Website/Social Media, Target Beneficiaries, Revenue Model, Year Founded, Awards
-              </p>
-            </div>
-
-            {isUploading && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                  <span className="text-blue-800">Processing CSV file and uploading data...</span>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* URL Management */}
         <Card className="bg-white/90 backdrop-blur-sm shadow-lg mb-6">
