@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Globe, Download, Upload, LogOut, User, FileText, Link, TrendingUp, PieChart, BarChart3, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -423,13 +422,49 @@ const AdminPanel = () => {
       } else {
         console.log("No new URLs to save to database");
       }
-      
-      toast({
-        title: "Scraping Started",
-        description: `Initiated ${urlType === "vc" ? "VC/Grant" : "startup"} scraping for ${urls.length} URLs. All URLs have been saved to the database.`,
-      });
 
-      // Simulate scraping process (in a real app, you would call your scraping API/service here)
+      // Trigger n8n webhook for startup scraping
+      if (urlType === "startup") {
+        try {
+          console.log("Triggering n8n webhook for startup scraping...");
+          const webhookResponse = await fetch("https://n8n.vebmy.com/webhook-test/getstartupscrape", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            mode: "no-cors", // Handle CORS issues
+            body: JSON.stringify({
+              urls: urls,
+              timestamp: new Date().toISOString(),
+              triggered_from: "ASBhive_Admin_Panel",
+              user_id: user?.id,
+              total_urls: urls.length
+            }),
+          });
+
+          console.log("Webhook request sent to n8n");
+          
+          toast({
+            title: "Scraping Started",
+            description: `Initiated startup scraping for ${urls.length} URLs. Webhook triggered successfully.`,
+          });
+        } catch (webhookError) {
+          console.error("Error triggering n8n webhook:", webhookError);
+          toast({
+            title: "Webhook Error",
+            description: "Failed to trigger n8n webhook, but URLs were saved to database.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        // For VC scraping, show the regular message
+        toast({
+          title: "Scraping Started",
+          description: `Initiated VC/Grant scraping for ${urls.length} URLs. All URLs have been saved to the database.`,
+        });
+      }
+
+      // Simulate scraping process completion
       setTimeout(() => {
         setIsScrapingActive(false);
         toast({
