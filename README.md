@@ -1,73 +1,199 @@
-# Welcome to your Lovable project
 
-## Project info
+# ASBhive Admin Panel
 
-**URL**: https://lovable.dev/projects/d6885d54-84c8-4a19-88d4-1b3916d50811
+A comprehensive admin dashboard for managing startup and VC/grant data scraping, built with React, TypeScript, and Supabase.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+### 🚀 Data Management
+- **URL Management**: Add, remove, and bulk import URLs for scraping
+- **CSV Upload**: Import URLs from CSV files
+- **Dual Data Types**: Support for both startup and VC/grant data sources
 
-**Use Lovable**
+### 📊 Analytics Dashboard
+- Real-time data visualization with charts and graphs
+- Sector distribution analysis
+- Yearly trends tracking
+- AI-powered insights generation
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d6885d54-84c8-4a19-88d4-1b3916d50811) and start prompting.
+### 🔧 Scraping Controls
+- Automated data scraping via n8n webhooks
+- Real-time scraping status monitoring
+- Data export functionality (JSON format)
 
-Changes made via Lovable will be committed automatically to this repo.
+### 🤖 AI-Powered Features
+- Smart matchmaking between startups and VCs
+- AI-generated insights from data patterns
+- Automated data analysis and recommendations
 
-**Use your preferred IDE**
+### 🔐 Authentication & Security
+- Supabase authentication integration
+- Role-based access control
+- Row Level Security (RLS) policies
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+## Tech Stack
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+- **Frontend**: React 18, TypeScript, Vite
+- **UI Framework**: Tailwind CSS, shadcn/ui
+- **Backend**: Supabase (Database, Auth, Edge Functions)
+- **Charts**: Recharts
+- **Icons**: Lucide React
+- **Data Fetching**: TanStack Query
+- **Routing**: React Router DOM
 
-Follow these steps:
+## Getting Started
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### Prerequisites
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+- Node.js (v18 or higher)
+- npm or yarn
+- Supabase account
 
-# Step 3: Install the necessary dependencies.
-npm i
+### Installation
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+1. Clone the repository:
+```bash
+git clone <your-repository-url>
+cd asbhive-admin-panel
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+Create a `.env.local` file with your Supabase credentials:
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+4. Start the development server:
+```bash
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The application will be available at `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Project Structure
 
-**Use GitHub Codespaces**
+```
+src/
+├── components/
+│   ├── admin/           # Admin panel specific components
+│   │   ├── Dashboard.tsx
+│   │   ├── URLManager.tsx
+│   │   ├── ScrapingControls.tsx
+│   │   └── RecentActivity.tsx
+│   ├── ui/              # Reusable UI components (shadcn/ui)
+│   └── Navbar.tsx
+├── hooks/
+│   ├── useDashboardData.ts    # Dashboard data management
+│   ├── useUrlManager.ts       # URL management logic
+│   └── use-toast.ts
+├── pages/
+│   ├── AdminPanel.tsx         # Main admin dashboard
+│   ├── StartupExplore.tsx     # Startup discovery page
+│   ├── VCExplore.tsx         # VC/Grant discovery page
+│   ├── Matchmaker.tsx        # AI matchmaking interface
+│   └── Auth.tsx              # Authentication page
+├── utils/
+│   └── scrapingUtils.ts      # Scraping and export utilities
+├── integrations/
+│   └── supabase/            # Supabase client and types
+└── lib/
+    └── utils.ts             # General utilities
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Database Schema
 
-## What technologies are used for this project?
+### Core Tables
+- `startup` - Startup company data
+- `grant_programs` - VC firms and grant programs
+- `startup_urls` - URLs for startup scraping
+- `grant_urls` - URLs for VC/grant scraping
+- `profiles` - User profile information
 
-This project is built with:
+### Key Features
+- Row Level Security (RLS) enabled on all tables
+- User-specific data access controls
+- Automated profile creation on user registration
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## API Integration
 
-## How can I deploy this project?
+### n8n Webhooks
+The application integrates with n8n workflows for automated data scraping:
 
-Simply open [Lovable](https://lovable.dev/projects/d6885d54-84c8-4a19-88d4-1b3916d50811) and click on Share -> Publish.
+- **Startup Scraping**: `https://n8n.vebmy.com/webhook/getstartupscrape`
+- **VC/Grant Scraping**: `https://n8n.vebmy.com/webhook/scrapevc`
 
-## Can I connect a custom domain to my Lovable project?
+### Supabase Edge Functions
+- `ai-matchmaker` - AI-powered matching between startups and VCs using Google Gemini
 
-Yes, you can!
+## Deployment
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Using Lovable
+1. Connect your project to GitHub via the Lovable interface
+2. Click "Publish" to deploy to Lovable's hosting platform
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Manual Deployment
+1. Build the project:
+```bash
+npm run build
+```
+
+2. Deploy the `dist` folder to your preferred hosting service
+
+### Environment Variables for Production
+Ensure these environment variables are set in your production environment:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `GEMINI_API_KEY` (for AI features)
+
+## Usage
+
+### Admin Panel Access
+1. Navigate to `/admin` after authentication
+2. Use the dashboard to monitor data and analytics
+3. Add URLs for scraping in the URL Management section
+4. Start scraping processes and monitor progress
+5. Export data as needed
+
+### Data Import Methods
+- **Single URL**: Add individual URLs manually
+- **Bulk Text**: Paste multiple URLs (one per line)
+- **CSV Upload**: Import URLs from CSV files
+
+### AI Matchmaking
+1. Visit `/matchmaker`
+2. Select your user type (startup seeker or VC)
+3. Describe your requirements
+4. Get AI-powered matches with detailed reasoning
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/new-feature`
+3. Commit changes: `git commit -am 'Add new feature'`
+4. Push to branch: `git push origin feature/new-feature`
+5. Submit a pull request
+
+## Security Considerations
+
+- All database operations use Row Level Security (RLS)
+- User authentication required for admin functions
+- API keys stored securely in Supabase secrets
+- CORS properly configured for webhook endpoints
+
+## License
+
+This project is proprietary and confidential.
+
+## Support
+
+For support and questions, please contact the development team or create an issue in the repository.
+
+---
+
+Built with ❤️ using Lovable, React, and Supabase
