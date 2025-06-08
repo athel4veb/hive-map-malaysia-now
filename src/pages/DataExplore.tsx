@@ -66,14 +66,17 @@ const DataExplore = () => {
           toast.error('Failed to fetch startups');
         }
 
+        console.log('Raw grant programs data:', grantPrograms);
+        console.log('Raw startups data:', startups);
+
         // Transform data to unified format
         const transformedData: Organization[] = [];
 
         // Transform grant programs
-        if (grantPrograms) {
+        if (grantPrograms && grantPrograms.length > 0) {
           grantPrograms.forEach((program) => {
             transformedData.push({
-              id: program.id,
+              id: `grant-${program.id}`,
               name: program.company_name || program.fund_name || 'Unknown Organization',
               website: program.website_url || '',
               description: program.description_services || '',
@@ -88,10 +91,10 @@ const DataExplore = () => {
         }
 
         // Transform startups - using correct column names from the database schema
-        if (startups) {
+        if (startups && startups.length > 0) {
           startups.forEach((startup) => {
             transformedData.push({
-              id: `startup-${startup.No}`,
+              id: `startup-${startup.No || Math.random()}`,
               name: startup["Company Name"] || 'Unknown Startup',
               website: startup["Website/Social Media"] || '',
               description: startup["What They Do"] || '',
@@ -106,6 +109,10 @@ const DataExplore = () => {
         }
 
         console.log('Transformed data:', transformedData);
+        console.log('Total organizations:', transformedData.length);
+        console.log('Startups count:', transformedData.filter(org => org.programType === 'Startup').length);
+        console.log('Funders count:', transformedData.filter(org => org.programType === 'Funder/VC').length);
+        
         setOrganizations(transformedData);
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -348,14 +355,20 @@ const DataExplore = () => {
                   <div>
                     <CardTitle className="text-xl text-gray-900 mb-2">{item.name}</CardTitle>
                     <div className="flex flex-wrap gap-2 mb-2">
-                      <Badge className={item.isAiMatch ? "bg-green-500 text-white hover:bg-green-600" : "bg-green-100 text-green-800 hover:bg-green-200"}>
+                      <Badge className={
+                        item.programType === 'Startup' 
+                          ? "bg-blue-500 text-white hover:bg-blue-600" 
+                          : item.isAiMatch 
+                            ? "bg-green-500 text-white hover:bg-green-600" 
+                            : "bg-green-100 text-green-800 hover:bg-green-200"
+                      }>
                         {item.programType}
                       </Badge>
                       <Badge variant="outline" className="border-blue-300 text-blue-700">
                         {item.sector}
                       </Badge>
                       {item.isAiMatch && item.matchPercentage && (
-                        <Badge className="bg-blue-500 text-white">
+                        <Badge className="bg-purple-500 text-white">
                           {item.matchPercentage}% match
                         </Badge>
                       )}
