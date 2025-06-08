@@ -13,6 +13,7 @@ import { Navbar } from "@/components/Navbar";
 const DataInput = () => {
   const { toast } = useToast();
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     organizationName: "",
     website: "",
@@ -25,7 +26,7 @@ const DataInput = () => {
     notes: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Simple validation
@@ -38,31 +39,56 @@ const DataInput = () => {
       return;
     }
 
-    // Simulate submission
-    console.log("Submitting data:", formData);
-    
-    toast({
-      title: "Thank you!",
-      description: "Your contribution has been submitted and will be reviewed.",
-    });
-    
-    setIsSubmitted(true);
-    
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({
-        organizationName: "",
-        website: "",
-        description: "",
-        sector: "",
-        location: "",
-        programType: "",
-        contactEmail: "",
-        contactPhone: "",
-        notes: ""
+    setIsSubmitting(true);
+
+    try {
+      // Submit to your webhook
+      const response = await fetch("https://n8n.vebmy.com/webhook-test/submitOrgInfo", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
       });
-    }, 3000);
+
+      if (response.ok) {
+        console.log("Data submitted successfully:", formData);
+        
+        toast({
+          title: "Thank you!",
+          description: "Your contribution has been submitted and will be reviewed.",
+        });
+        
+        setIsSubmitted(true);
+        
+        // Reset form after 3 seconds
+        setTimeout(() => {
+          setIsSubmitted(false);
+          setFormData({
+            organizationName: "",
+            website: "",
+            description: "",
+            sector: "",
+            location: "",
+            programType: "",
+            contactEmail: "",
+            contactPhone: "",
+            notes: ""
+          });
+        }, 3000);
+      } else {
+        throw new Error("Failed to submit");
+      }
+    } catch (error) {
+      console.error("Error submitting data:", error);
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -250,10 +276,11 @@ const DataInput = () => {
               <div className="flex justify-end">
                 <Button 
                   type="submit" 
+                  disabled={isSubmitting}
                   className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 px-8 py-2"
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  Submit Contribution
+                  {isSubmitting ? "Submitting..." : "Submit Contribution"}
                 </Button>
               </div>
             </form>
