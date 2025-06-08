@@ -31,6 +31,8 @@ interface Organization {
   impact?: string;
   awards?: string;
   grants?: string;
+  institutionalSupport?: string;
+  magicAccredited?: string;
 }
 
 const DataExplore = () => {
@@ -51,9 +53,25 @@ const DataExplore = () => {
         setLoading(true);
         
         console.log("Fetching startup data from startup table...");
-        const { data: startups, error: startupError } = await supabase
+        
+        // First, let's check if we can connect to the database at all
+        const { data: testConnection, error: testError } = await supabase
           .from('startup')
-          .select('*');
+          .select('count(*)', { count: 'exact', head: true });
+        
+        if (testError) {
+          console.error('Database connection test failed:', testError);
+          toast.error(`Database connection failed: ${testError.message}`);
+          setLoading(false);
+          return;
+        }
+
+        console.log('Database connection successful, total count:', testConnection);
+
+        // Now fetch actual data
+        const { data: startups, error: startupError, count } = await supabase
+          .from('startup')
+          .select('*', { count: 'exact' });
         
         if (startupError) {
           console.error('Error fetching startups:', startupError);
@@ -64,18 +82,19 @@ const DataExplore = () => {
 
         console.log('Raw startups data:', startups);
         console.log('Number of startups found:', startups?.length || 0);
+        console.log('Total count from query:', count);
 
         // Transform data to unified format
         const transformedData: Organization[] = [];
 
         if (startups && startups.length > 0) {
-          startups.forEach((startup) => {
-            console.log('Processing startup:', startup);
+          startups.forEach((startup, index) => {
+            console.log(`Processing startup ${index + 1}:`, startup);
             transformedData.push({
-              id: `startup-${startup.No || Math.random()}`,
+              id: `startup-${startup.No || index}`,
               name: startup.CompanyName || 'Unknown Startup',
               website: startup.WebsiteSocialMedia || '',
-              description: startup.WhatTheyDo || '',
+              description: startup.WhatTheyDo || 'No description available',
               sector: startup.Sector || 'Various',
               location: startup.Location || 'Malaysia',
               contactEmail: '',
@@ -86,22 +105,35 @@ const DataExplore = () => {
               revenueModel: startup.RevenueModel || '',
               impact: startup.Impact || '',
               awards: startup.Awards || '',
-              grants: startup.Grants || ''
+              grants: startup.Grants || '',
+              institutionalSupport: startup.InstitutionalSupport || '',
+              magicAccredited: startup.MaGICAccredited || ''
             });
           });
+          console.log('Successfully transformed data for', transformedData.length, 'startups');
           toast.success(`Loaded ${transformedData.length} startups successfully!`);
         } else {
           console.log('No startup data found in startup table');
-          toast.info("No startup data found in the startup table");
+          
+          // Let's check if the table exists and what columns it has
+          const { data: tableInfo, error: tableError } = await supabase
+            .rpc('get_table_info', { table_name: 'startup' })
+            .single();
+            
+          if (tableError) {
+            console.log('Could not get table info, table might be empty or have permission issues');
+            toast.error("No startup data found. The table might be empty or there might be permission issues.");
+          } else {
+            console.log('Table info:', tableInfo);
+            toast.info("Startup table exists but contains no data");
+          }
         }
 
-        console.log('Transformed data:', transformedData);
-        console.log('Total organizations:', transformedData.length);
-        
+        console.log('Final transformed data:', transformedData);
         setOrganizations(transformedData);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('Failed to fetch data');
+        console.error('Unexpected error fetching data:', error);
+        toast.error('Unexpected error occurred while fetching data');
       } finally {
         setLoading(false);
       }
@@ -334,6 +366,11 @@ const DataExplore = () => {
                           Founded {item.yearFounded}
                         </Badge>
                       )}
+                      {item.magicAccredited && item.magicAccredited.toLowerCase() === 'yes' && (
+                        <Badge variant="outline" className="border-purple-300 text-purple-700">
+                          MaGIC Accredited
+                        </Badge>
+                      )}
                       {item.isAiMatch && item.matchPercentage && (
                         <Badge className="bg-purple-500 text-white">
                           {item.matchPercentage}% match
@@ -398,6 +435,20 @@ const DataExplore = () => {
                     <p className="text-sm text-green-600">{item.impact}</p>
                   </div>
                 )}
+
+                {item.awards && (
+                  <div className="bg-yellow-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-yellow-700 mb-1">Awards:</h4>
+                    <p className="text-sm text-yellow-600">{item.awards}</p>
+                  </div>
+                )}
+
+                {item.grants && (
+                  <div className="bg-indigo-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-indigo-700 mb-1">Grants:</h4>
+                    <p className="text-sm text-indigo-600">{item.grants}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -407,7 +458,12 @@ const DataExplore = () => {
           <div className="text-center py-12">
             <Filter className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
-            <p className="text-gray-600">Try adjusting your search terms or filters</p>
+            <p className="text-gray-600">
+              {organizations.length === 0 
+                ? "No startup data available. Please check if the startup table contains data." 
+                : "Try adjusting your search terms or filters"
+              }
+            </p>
           </div>
         )}
 
