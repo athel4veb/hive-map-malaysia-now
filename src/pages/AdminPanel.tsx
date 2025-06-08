@@ -493,7 +493,7 @@ const AdminPanel = () => {
       color: "#8884d8",
     },
     vcs: {
-      label: "VCs",
+      label: "VCs", 
       color: "#82ca9d",
     },
   };
@@ -581,27 +581,25 @@ const AdminPanel = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={dashboardData.sectorDistribution}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {dashboardData.sectorDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
-                </div>
+                <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                  <RechartsPieChart width="100%" height="100%">
+                    <Pie
+                      data={dashboardData.sectorDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {dashboardData.sectorDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </RechartsPieChart>
+                </ChartContainer>
               </CardContent>
             </Card>
 
@@ -614,18 +612,16 @@ const AdminPanel = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[300px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={dashboardData.yearlyTrends} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="year" />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line type="monotone" dataKey="startups" stroke="#8884d8" strokeWidth={3} name="Startups" />
-                      <Line type="monotone" dataKey="vcs" stroke="#82ca9d" strokeWidth={3} name="VCs" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                  <LineChart data={dashboardData.yearlyTrends} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="startups" stroke="#8884d8" strokeWidth={3} name="Startups" />
+                    <Line type="monotone" dataKey="vcs" stroke="#82ca9d" strokeWidth={3} name="VCs" />
+                  </LineChart>
+                </ChartContainer>
               </CardContent>
             </Card>
           </div>
