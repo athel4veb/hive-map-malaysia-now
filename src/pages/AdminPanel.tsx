@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Globe, Download, Upload, LogOut, User, FileText, Link, TrendingUp, PieChart, BarChart3, Brain } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -186,9 +187,9 @@ const AdminPanel = () => {
           color: colors[index % colors.length]
         }));
 
-      // Process yearly trends - filter to last 5 years only
+      // Process yearly trends - filter to last 10 years only
       const currentYear = new Date().getFullYear();
-      const startYear = currentYear - 4; // Last 5 years (including current year)
+      const startYear = currentYear - 9; // Last 10 years (including current year)
       
       const yearCounts: { [key: string]: { startups: number; vcs: number } } = {};
       
@@ -582,23 +583,25 @@ const AdminPanel = () => {
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                  <RechartsPieChart width="100%" height="100%">
-                    <Pie
-                      data={dashboardData.sectorDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {dashboardData.sectorDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                  </RechartsPieChart>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={dashboardData.sectorDistribution}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {dashboardData.sectorDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
                 </ChartContainer>
               </CardContent>
             </Card>
@@ -608,19 +611,21 @@ const AdminPanel = () => {
               <CardHeader>
                 <CardTitle className="flex items-center text-xl text-gray-900">
                   <TrendingUp className="h-5 w-5 mr-2 text-green-600" />
-                  Growth Trends (Last 5 Years)
+                  Growth Trends (Last 10 Years)
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                  <LineChart data={dashboardData.yearlyTrends} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="year" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="startups" stroke="#8884d8" strokeWidth={3} name="Startups" />
-                    <Line type="monotone" dataKey="vcs" stroke="#82ca9d" strokeWidth={3} name="VCs" />
-                  </LineChart>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dashboardData.yearlyTrends} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="year" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="startups" stroke="#8884d8" strokeWidth={3} name="Startups" />
+                      <Line type="monotone" dataKey="vcs" stroke="#82ca9d" strokeWidth={3} name="VCs" />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </ChartContainer>
               </CardContent>
             </Card>
