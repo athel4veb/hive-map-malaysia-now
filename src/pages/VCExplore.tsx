@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Building2, MapPin, ExternalLink, Globe, Award, TrendingUp, Users, Search, Sparkles, Loader2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,7 @@ const VCExplore = () => {
       const { data, error } = await supabase
         .from('grant_programs')
         .select('*')
-        .order('company_name', { ascending: true });
+        .order('fund_name', { ascending: true });
 
       if (error) {
         console.error('Error fetching VC data:', error);
@@ -67,7 +66,7 @@ const VCExplore = () => {
       const transformedData: VCData[] = data.map((item) => ({
         id: item.id,
         companyName: item.company_name || 'Unknown Company',
-        fundName: item.fund_name || 'N/A',
+        fundName: item.fund_name || 'Unknown Fund',
         industrySector: item.industry_sector || 'Unspecified',
         descriptionServices: item.description_services || '',
         websiteUrl: item.website_url || '',
@@ -98,8 +97,8 @@ const VCExplore = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(vc =>
-        vc.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         vc.fundName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vc.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         vc.industrySector.toLowerCase().includes(searchTerm.toLowerCase()) ||
         vc.descriptionServices.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -113,18 +112,25 @@ const VCExplore = () => {
   };
 
   const findBestMatch = (aiName: string, vcList: VCData[]) => {
-    // First try exact match
+    // First try exact match on fund name
     let match = vcList.find(vc => 
+      vc.fundName.toLowerCase() === aiName.toLowerCase()
+    );
+    
+    if (match) return match;
+    
+    // Then try company name exact match
+    match = vcList.find(vc => 
       vc.companyName.toLowerCase() === aiName.toLowerCase()
     );
     
     if (match) return match;
     
-    // Then try partial matches - check if AI name contains VC company name or vice versa
+    // Then try partial matches - check if AI name contains fund name or vice versa
     match = vcList.find(vc => {
-      const vcName = vc.companyName.toLowerCase();
+      const fundName = vc.fundName.toLowerCase();
       const searchName = aiName.toLowerCase();
-      return vcName.includes(searchName) || searchName.includes(vcName);
+      return fundName.includes(searchName) || searchName.includes(fundName);
     });
     
     if (match) return match;
@@ -134,9 +140,9 @@ const VCExplore = () => {
     const significantWords = aiWords.filter(word => word.length > 2); // Filter out short words
     
     match = vcList.find(vc => {
-      const vcWords = vc.companyName.toLowerCase().split(/[\s\-_]+/);
+      const fundWords = vc.fundName.toLowerCase().split(/[\s\-_]+/);
       const commonWords = significantWords.filter(word => 
-        vcWords.some(vcWord => vcWord.includes(word) || word.includes(vcWord))
+        fundWords.some(fundWord => fundWord.includes(word) || word.includes(fundWord))
       );
       return commonWords.length >= Math.min(2, significantWords.length * 0.6); // At least 60% word match
     });
@@ -180,7 +186,7 @@ const VCExplore = () => {
         const vcMatch = findBestMatch(match.name, vcData);
         
         if (vcMatch) {
-          console.log('Found matching VC:', vcMatch.companyName);
+          console.log('Found matching VC:', vcMatch.fundName);
           return {
             ...vcMatch,
             matchPercentage: match.matchPercentage,
@@ -193,8 +199,8 @@ const VCExplore = () => {
         // If no match found, create a placeholder entry with the AI information
         return {
           id: Math.random() * 10000,
-          companyName: match.name,
-          fundName: 'AI Recommended',
+          companyName: 'AI Recommended',
+          fundName: match.name,
           industrySector: 'Various',
           descriptionServices: match.reasons?.join('. ') || 'AI recommended match',
           websiteUrl: '',
@@ -353,7 +359,10 @@ const VCExplore = () => {
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-xl text-gray-900 mb-2">{vc.companyName}</CardTitle>
+                    <CardTitle className="text-xl text-gray-900 mb-2">{vc.fundName}</CardTitle>
+                    {vc.companyName && vc.companyName !== 'Unknown Company' && vc.companyName !== 'AI Recommended' && (
+                      <p className="text-sm text-gray-600 mb-2">{vc.companyName}</p>
+                    )}
                     <div className="flex flex-wrap gap-2 mb-2">
                       <Badge className="bg-green-500 text-white hover:bg-green-600">
                         VC/Grant
@@ -363,12 +372,6 @@ const VCExplore = () => {
                           {sector.trim()}
                         </Badge>
                       ))}
-                      {vc.fundName && vc.fundName !== 'N/A' && (
-                        <Badge variant="outline" className="border-purple-300 text-purple-700">
-                          <Award className="h-3 w-3 mr-1" />
-                          {vc.fundName}
-                        </Badge>
-                      )}
                       {vc.socialEnterpriseStatus && (
                         <Badge className="bg-blue-500 text-white">
                           <Users className="h-3 w-3 mr-1" />
