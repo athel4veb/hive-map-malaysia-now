@@ -112,6 +112,38 @@ const VCExplore = () => {
     setFilteredVcData(filtered);
   };
 
+  const findBestMatch = (aiName: string, vcList: VCData[]) => {
+    // First try exact match
+    let match = vcList.find(vc => 
+      vc.companyName.toLowerCase() === aiName.toLowerCase()
+    );
+    
+    if (match) return match;
+    
+    // Then try partial matches - check if AI name contains VC company name or vice versa
+    match = vcList.find(vc => {
+      const vcName = vc.companyName.toLowerCase();
+      const searchName = aiName.toLowerCase();
+      return vcName.includes(searchName) || searchName.includes(vcName);
+    });
+    
+    if (match) return match;
+    
+    // Try matching by words (for cases like "SME Corporation Malaysia" matching "SME Corp Malaysia")
+    const aiWords = aiName.toLowerCase().split(/[\s\-_]+/);
+    const significantWords = aiWords.filter(word => word.length > 2); // Filter out short words
+    
+    match = vcList.find(vc => {
+      const vcWords = vc.companyName.toLowerCase().split(/[\s\-_]+/);
+      const commonWords = significantWords.filter(word => 
+        vcWords.some(vcWord => vcWord.includes(word) || word.includes(vcWord))
+      );
+      return commonWords.length >= Math.min(2, significantWords.length * 0.6); // At least 60% word match
+    });
+    
+    return match;
+  };
+
   const handleAiSearch = async () => {
     if (!aiPrompt.trim()) {
       toast.error("Please enter a description of what you're looking for");
@@ -140,16 +172,15 @@ const VCExplore = () => {
         throw new Error('Invalid response from AI matchmaker');
       }
 
-      // Map AI matches to VC data format
+      // Improved mapping logic
       const mappedMatches: VCData[] = data.matches.map((match: any) => {
-        // Try to find the VC in our dataset by name
-        const vcMatch = vcData.find(vc => 
-          vc.companyName.toLowerCase() === match.name.toLowerCase() ||
-          vc.companyName.toLowerCase().includes(match.name.toLowerCase()) ||
-          match.name.toLowerCase().includes(vc.companyName.toLowerCase())
-        );
-
+        console.log('Processing AI match:', match.name);
+        
+        // Find the best matching VC in our dataset
+        const vcMatch = findBestMatch(match.name, vcData);
+        
         if (vcMatch) {
+          console.log('Found matching VC:', vcMatch.companyName);
           return {
             ...vcMatch,
             matchPercentage: match.matchPercentage,
@@ -158,7 +189,8 @@ const VCExplore = () => {
           };
         }
 
-        // If no exact match found, create a placeholder entry
+        console.log('No exact match found, creating placeholder for:', match.name);
+        // If no match found, create a placeholder entry with the AI information
         return {
           id: Math.random() * 10000,
           companyName: match.name,
@@ -166,7 +198,7 @@ const VCExplore = () => {
           industrySector: 'Various',
           descriptionServices: match.reasons?.join('. ') || 'AI recommended match',
           websiteUrl: '',
-          contactInfo: '',
+          contactInfo: 'Contact information not available',
           socialEnterpriseStatus: '',
           programParticipation: '',
           relatedNewsUpdates: '',
@@ -174,8 +206,9 @@ const VCExplore = () => {
           reasons: match.reasons,
           isAiMatch: true
         };
-      });
+      }).filter(Boolean);
 
+      console.log('Mapped matches:', mappedMatches);
       setAiMatches(mappedMatches);
       setShowAiResults(true);
       
