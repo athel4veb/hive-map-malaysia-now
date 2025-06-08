@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import DataExplore from "./pages/DataExplore";
 import StartupExplore from "./pages/StartupExplore";
+import VCExplore from "./pages/VCExplore";
 import DataInput from "./pages/DataInput";
 import AdminPanel from "./pages/AdminPanel";
 import Matchmaker from "./pages/Matchmaker";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/explore" element={<DataExplore />} />
           <Route path="/startups" element={<StartupExplore />} />
+          <Route path="/vc" element={<VCExplore />} />
           <Route path="/contribute" element={<DataInput />} />
           <Route path="/matchmaker" element={<Matchmaker />} />
           <Route path="/connection-hub" element={<ConnectionHub />} />
