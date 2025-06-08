@@ -1,0 +1,87 @@
+{
+  "name": "Scraper VC",
+  "nodes": [
+    {
+      "parameters": {
+        "command": "python \"C:\\inetpub\\n8n\\testpy\\fullvc_v5.py\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        840,
+        -260
+      ],
+      "id": "057073dd-8b09-4a86-a338-ac180128921e",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        40,
+        -380
+      ],
+      "id": "91dce995-c9bb-4c73-88f2-e5d628eaf274",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "scrapevc",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        40,
+        -160
+      ],
+      "id": "e8d7c0b9-2e67-433d-8f27-c249f8c5ad5f",
+      "name": "Webhook",
+      "webhookId": "aae82027-528a-4a0a-bc8f-15ebbd2e48fe"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "27e6ab30-1bd2-4286-909c-29f699641bac",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b5d273eab690ff5df04fe665d3482f6b75d459d1fdb3e1c5deba86e62f1dab41"
+  },
+  "id": "enwIwpiVFk4fA1rC",
+  "tags": []
+}

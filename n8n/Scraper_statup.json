@@ -1,0 +1,59 @@
+{
+  "name": "Scraper statup",
+  "nodes": [
+    {
+      "parameters": {
+        "command": "python \"C:\\inetpub\\n8n\\testpy\\fullstart.py\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        280,
+        0
+      ],
+      "id": "9582f777-cde9-4df6-bf29-9921af13786d",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "getstartupscrape",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bec83bb8-54f8-49db-8bdc-5f0f6d37b3ac",
+      "name": "Webhook",
+      "webhookId": "dcfd45a3-a15c-449c-b578-78d739f0001d"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "682f64c7-d871-42f1-828d-eb659d9b4d95",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b5d273eab690ff5df04fe665d3482f6b75d459d1fdb3e1c5deba86e62f1dab41"
+  },
+  "id": "EPpbq9lrZJNKKE8t",
+  "tags": []
+}
