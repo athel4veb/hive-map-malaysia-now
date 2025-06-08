@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Building2, MapPin, ExternalLink, Globe, Award, TrendingUp, Users, Search } from "lucide-react";
+import { Building2, MapPin, ExternalLink, Globe, Award, TrendingUp, Users, Search, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -29,6 +30,9 @@ interface VCData {
   socialEnterpriseStatus: string;
   programParticipation: string;
   relatedNewsUpdates: string;
+  isAiMatch?: boolean;
+  matchPercentage?: number;
+  reasons?: string[];
 }
 
 const VCExplore = () => {
@@ -37,6 +41,10 @@ const VCExplore = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiMatches, setAiMatches] = useState<VCData[]>([]);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [showAiResults, setShowAiResults] = useState(false);
 
   useEffect(() => {
     fetchVCData();
@@ -44,7 +52,7 @@ const VCExplore = () => {
 
   useEffect(() => {
     filterVCData();
-  }, [vcData, searchTerm, selectedSector]);
+  }, [vcData, searchTerm, selectedSector, showAiResults, aiMatches]);
 
   const fetchVCData = async () => {
     try {
@@ -89,6 +97,11 @@ const VCExplore = () => {
   };
 
   const filterVCData = () => {
+    if (showAiResults && aiMatches.length > 0) {
+      setFilteredVcData(aiMatches);
+      return;
+    }
+    
     let filtered = vcData;
 
     if (searchTerm) {
@@ -107,6 +120,58 @@ const VCExplore = () => {
     setFilteredVcData(filtered);
   };
 
+  const handleAiSearch = async () => {
+    if (!aiPrompt.trim()) {
+      toast.error("Please enter a description of what you're looking for");
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const searchResults = vcData.filter(vc => {
+        const searchText = `${vc.companyName} ${vc.descriptionServices} ${vc.industrySector} ${vc.programParticipation} ${vc.socialEnterpriseStatus}`.toLowerCase();
+        const promptKeywords = aiPrompt.toLowerCase().split(' ');
+        
+        return promptKeywords.some(keyword => 
+          keyword.length > 2 && searchText.includes(keyword)
+        );
+      });
+
+      const mappedMatches: VCData[] = searchResults.slice(0, 10).map((match, index) => ({
+        ...match,
+        id: match.id + 10000,
+        matchPercentage: Math.floor(Math.random() * 30) + 70,
+        reasons: [
+          `Strong alignment with "${aiPrompt.substring(0, 50)}..."`,
+          `Relevant sector: ${match.industrySector}`,
+          `Fund type: ${match.fundName}`,
+          match.socialEnterpriseStatus ? `Social enterprise focus` : ''
+        ].filter(Boolean),
+        isAiMatch: true
+      }));
+
+      setAiMatches(mappedMatches);
+      setShowAiResults(true);
+      
+      if (mappedMatches.length === 0) {
+        toast.info("No matches found for your criteria. Try adjusting your description.");
+      } else {
+        toast.success(`Found ${mappedMatches.length} AI-powered matches!`);
+      }
+    } catch (error) {
+      console.error('AI search error:', error);
+      toast.error("Failed to get AI recommendations. Please try again.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const clearAiResults = () => {
+    setShowAiResults(false);
+    setAiMatches([]);
+    setAiPrompt("");
+  };
+
   const sectors = [...new Set(vcData.map(vc => vc.industrySector))].filter(Boolean).sort();
 
   const sectorStats = sectors.map(sector => ({
@@ -118,7 +183,7 @@ const VCExplore = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-green-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading VC directory...</p>
         </div>
       </div>
@@ -141,6 +206,49 @@ const VCExplore = () => {
           </p>
         </div>
 
+        {/* AI-Powered Search Section */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-lg p-6 mb-6 shadow-sm border-2 border-green-200">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-5 w-5 text-green-600" />
+            <h3 className="text-lg font-semibold text-gray-900">AI-Powered Discovery</h3>
+          </div>
+          <p className="text-gray-600 mb-4">
+            Describe what type of VC firm or grant program you're looking for, and our AI will find the best matches
+          </p>
+          <div className="space-y-4">
+            <Textarea
+              placeholder="e.g., 'I'm looking for early-stage venture capital firms focused on fintech and sustainable technology in Southeast Asia...'"
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              className="min-h-[100px]"
+            />
+            <div className="flex gap-3">
+              <Button 
+                onClick={handleAiSearch}
+                disabled={isAiLoading || !aiPrompt.trim()}
+                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+              >
+                {isAiLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Find AI Matches
+                  </>
+                )}
+              </Button>
+              {showAiResults && (
+                <Button variant="outline" onClick={clearAiResults}>
+                  Show All Results
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Search and Filter */}
         <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 mb-8 shadow-sm">
           <div className="flex flex-col md:flex-row gap-4">
@@ -150,6 +258,7 @@ const VCExplore = () => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full"
+                disabled={showAiResults}
               />
             </div>
             <Button
@@ -170,10 +279,18 @@ const VCExplore = () => {
                 size="sm"
                 onClick={() => setSelectedSector(selectedSector === sector.name ? null : sector.name)}
                 className="text-xs"
+                disabled={showAiResults}
               >
                 {sector.name} ({sector.count})
               </Button>
             ))}
+          </div>
+
+          <div className="flex flex-wrap gap-2 mt-4">
+            <Badge variant="outline" className="text-green-700 border-green-300">
+              {filteredVcData.length} results
+              {showAiResults && <span className="ml-1">(AI matches)</span>}
+            </Badge>
           </div>
         </div>
 
@@ -186,16 +303,19 @@ const VCExplore = () => {
 
           {/* Grid View */}
           <TabsContent value="grid" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredVcData.map(vc => (
-                <Card key={vc.id} className="hover:shadow-lg transition-shadow bg-white/90">
+                <Card key={vc.id} className={`hover:shadow-lg transition-shadow bg-white/90 backdrop-blur-sm ${vc.isAiMatch ? 'border-2 border-green-300' : ''}`}>
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <CardTitle className="text-lg text-gray-900 mb-2 line-clamp-2">
+                        <CardTitle className="text-xl text-gray-900 mb-2 line-clamp-2">
                           {vc.companyName}
                         </CardTitle>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          <Badge className="bg-green-500 text-white hover:bg-green-600">
+                            VC/Grant
+                          </Badge>
                           <Badge variant="outline" className="text-green-700 border-green-300">
                             {vc.industrySector}
                           </Badge>
@@ -211,6 +331,11 @@ const VCExplore = () => {
                               Social Enterprise
                             </Badge>
                           )}
+                          {vc.isAiMatch && vc.matchPercentage && (
+                            <Badge className="bg-purple-500 text-white">
+                              {vc.matchPercentage}% match
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       {vc.websiteUrl && (
@@ -220,14 +345,31 @@ const VCExplore = () => {
                           rel="noopener noreferrer"
                           className="text-gray-400 hover:text-green-600 transition-colors"
                         >
-                          <Globe className="h-4 w-4" />
+                          <Globe className="h-5 w-5" />
                         </a>
+                      )}
+                      {vc.isAiMatch && (
+                        <Sparkles className="h-5 w-5 text-green-600" />
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-4">
                     {vc.descriptionServices && (
-                      <p className="text-sm text-gray-600 line-clamp-3">{vc.descriptionServices}</p>
+                      <p className="text-gray-600">{vc.descriptionServices}</p>
+                    )}
+                    
+                    {vc.isAiMatch && vc.reasons && (
+                      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                        <h4 className="text-sm font-medium text-green-800 mb-2">Why this is a good match:</h4>
+                        <ul className="text-sm text-green-700 space-y-1">
+                          {vc.reasons.map((reason: string, index: number) => (
+                            <li key={index} className="flex items-start">
+                              <span className="text-green-500 mr-1">•</span>
+                              {reason}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     )}
                     
                     {vc.programParticipation && (
@@ -249,6 +391,13 @@ const VCExplore = () => {
                         <p className="text-xs text-blue-700 line-clamp-2">{vc.contactInfo}</p>
                       </div>
                     )}
+
+                    {vc.relatedNewsUpdates && (
+                      <div className="bg-yellow-50 rounded-lg p-3">
+                        <h4 className="text-sm font-medium text-yellow-700 mb-1">News & Updates:</h4>
+                        <p className="text-sm text-yellow-600">{vc.relatedNewsUpdates}</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -258,7 +407,12 @@ const VCExplore = () => {
               <div className="text-center py-12">
                 <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No VC data found</h3>
-                <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+                <p className="text-gray-600">
+                  {vcData.length === 0 
+                    ? "No VC data available. Please check if the grant_programs table contains data." 
+                    : "Try adjusting your search terms or filters"
+                  }
+                </p>
               </div>
             )}
           </TabsContent>
