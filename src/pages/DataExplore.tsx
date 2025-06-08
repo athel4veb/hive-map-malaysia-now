@@ -19,20 +19,24 @@ interface Organization {
   description: string;
   sector: string;
   location: string;
-  programType: string;
   contactEmail?: string;
   contactPhone?: string;
   notes?: string;
   isAiMatch?: boolean;
   matchPercentage?: number;
   reasons?: string[];
+  yearFounded?: number;
+  targetBeneficiaries?: string;
+  revenueModel?: string;
+  impact?: string;
+  awards?: string;
+  grants?: string;
 }
 
 const DataExplore = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sectorFilter, setSectorFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
-  const [programTypeFilter, setProgramTypeFilter] = useState("all");
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiMatches, setAiMatches] = useState<Organization[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
@@ -46,17 +50,7 @@ const DataExplore = () => {
       try {
         setLoading(true);
         
-        // Fetch grant programs (VCs/Funders)
-        const { data: grantPrograms, error: grantError } = await supabase
-          .from('grant_programs')
-          .select('*');
-        
-        if (grantError) {
-          console.error('Error fetching grant programs:', grantError);
-          toast.error('Failed to fetch grant programs');
-        }
-
-        // Fetch startups
+        // Fetch startups only
         const { data: startups, error: startupError } = await supabase
           .from('startup')
           .select('*');
@@ -66,29 +60,10 @@ const DataExplore = () => {
           toast.error('Failed to fetch startups');
         }
 
-        console.log('Raw grant programs data:', grantPrograms);
         console.log('Raw startups data:', startups);
 
         // Transform data to unified format
         const transformedData: Organization[] = [];
-
-        // Transform grant programs
-        if (grantPrograms && grantPrograms.length > 0) {
-          grantPrograms.forEach((program) => {
-            transformedData.push({
-              id: `grant-${program.id}`,
-              name: program.company_name || program.fund_name || 'Unknown Organization',
-              website: program.website_url || '',
-              description: program.description_services || '',
-              sector: program.industry_sector || 'Various',
-              location: 'Malaysia', // Default as location not in grant_programs table
-              programType: 'Funder/VC',
-              contactEmail: program.contact_info || '',
-              contactPhone: '',
-              notes: program.related_news_updates || ''
-            });
-          });
-        }
 
         // Transform startups - using correct column names from the database schema
         if (startups && startups.length > 0) {
@@ -100,18 +75,21 @@ const DataExplore = () => {
               description: startup["What They Do"] || '',
               sector: startup.Sector || 'Various',
               location: startup.Location || 'Malaysia',
-              programType: 'Startup',
               contactEmail: '',
               contactPhone: '',
-              notes: startup["Problem They Solve"] || ''
+              notes: startup["Problem They Solve"] || '',
+              yearFounded: startup["Year Founded"] || undefined,
+              targetBeneficiaries: startup["Target Beneficiaries"] || '',
+              revenueModel: startup["Revenue Model"] || '',
+              impact: startup.Impact || '',
+              awards: startup.Awards || '',
+              grants: startup.Grants || ''
             });
           });
         }
 
         console.log('Transformed data:', transformedData);
-        console.log('Total organizations:', transformedData.length);
-        console.log('Startups count:', transformedData.filter(org => org.programType === 'Startup').length);
-        console.log('Funders count:', transformedData.filter(org => org.programType === 'Funder/VC').length);
+        console.log('Total startups:', transformedData.length);
         
         setOrganizations(transformedData);
       } catch (error) {
@@ -134,15 +112,15 @@ const DataExplore = () => {
       const matchesSearch = 
         item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase()));
+        (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (item.sector && item.sector.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesSector = sectorFilter === "all" || item.sector === sectorFilter;
       const matchesLocation = locationFilter === "all" || item.location === locationFilter;
-      const matchesProgramType = programTypeFilter === "all" || item.programType === programTypeFilter;
       
-      return matchesSearch && matchesSector && matchesLocation && matchesProgramType;
+      return matchesSearch && matchesSector && matchesLocation;
     });
-  }, [searchTerm, sectorFilter, locationFilter, programTypeFilter, showAiResults, aiMatches, organizations]);
+  }, [searchTerm, sectorFilter, locationFilter, showAiResults, aiMatches, organizations]);
 
   const handleAiSearch = async () => {
     if (!aiPrompt.trim()) {
@@ -154,7 +132,7 @@ const DataExplore = () => {
     try {
       // Search through actual database using AI
       const searchResults = organizations.filter(org => {
-        const searchText = `${org.name} ${org.description} ${org.sector} ${org.notes}`.toLowerCase();
+        const searchText = `${org.name} ${org.description} ${org.sector} ${org.notes} ${org.targetBeneficiaries} ${org.revenueModel} ${org.impact}`.toLowerCase();
         const promptKeywords = aiPrompt.toLowerCase().split(' ');
         
         // Simple keyword matching - can be enhanced with more sophisticated AI matching
@@ -171,8 +149,9 @@ const DataExplore = () => {
         reasons: [
           `Strong alignment with "${aiPrompt.substring(0, 50)}..."`,
           `Relevant sector: ${match.sector}`,
-          `Active in ${match.location}`
-        ],
+          `Active in ${match.location}`,
+          match.targetBeneficiaries ? `Target beneficiaries: ${match.targetBeneficiaries}` : ''
+        ].filter(Boolean),
         isAiMatch: true
       }));
 
@@ -201,14 +180,13 @@ const DataExplore = () => {
   // Generate dynamic filter options from actual data
   const sectors = [...new Set(organizations.map(item => item.sector))].filter(Boolean);
   const locations = [...new Set(organizations.map(item => item.location))].filter(Boolean);
-  const programTypes = [...new Set(organizations.map(item => item.programType))].filter(Boolean);
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading ecosystem data...</p>
+          <p className="text-gray-600">Loading startup ecosystem data...</p>
         </div>
       </div>
     );
@@ -222,10 +200,10 @@ const DataExplore = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Explore the Ecosystem
+            Discover Startups
           </h1>
           <p className="text-lg text-gray-600">
-            Discover {organizations.length} organizations in Malaysia's social enterprise ecosystem
+            Explore {organizations.length} startups in Malaysia's social enterprise ecosystem
           </p>
         </div>
 
@@ -236,7 +214,7 @@ const DataExplore = () => {
             <h3 className="text-lg font-semibold text-gray-900">AI-Powered Discovery</h3>
           </div>
           <p className="text-gray-600 mb-4">
-            Describe what type of startup or organization you're looking for, and our AI will find the best matches
+            Describe what type of startup you're looking for, and our AI will find the best matches
           </p>
           <div className="space-y-4">
             <Textarea
@@ -274,11 +252,11 @@ const DataExplore = () => {
 
         {/* Traditional Search and Filters */}
         <div className="bg-white/80 backdrop-blur-sm rounded-lg p-6 mb-8 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search organizations..."
+                placeholder="Search startups..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -309,18 +287,6 @@ const DataExplore = () => {
                 ))}
               </SelectContent>
             </Select>
-            
-            <Select value={programTypeFilter} onValueChange={setProgramTypeFilter} disabled={showAiResults}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {programTypes.map(type => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           
           <div className="flex flex-wrap gap-2">
@@ -338,11 +304,6 @@ const DataExplore = () => {
                 Location: {locationFilter} ×
               </Badge>
             )}
-            {programTypeFilter !== "all" && (
-              <Badge variant="secondary" onClick={() => setProgramTypeFilter("all")} className="cursor-pointer">
-                Type: {programTypeFilter} ×
-              </Badge>
-            )}
           </div>
         </div>
 
@@ -355,18 +316,17 @@ const DataExplore = () => {
                   <div>
                     <CardTitle className="text-xl text-gray-900 mb-2">{item.name}</CardTitle>
                     <div className="flex flex-wrap gap-2 mb-2">
-                      <Badge className={
-                        item.programType === 'Startup' 
-                          ? "bg-blue-500 text-white hover:bg-blue-600" 
-                          : item.isAiMatch 
-                            ? "bg-green-500 text-white hover:bg-green-600" 
-                            : "bg-green-100 text-green-800 hover:bg-green-200"
-                      }>
-                        {item.programType}
+                      <Badge className="bg-blue-500 text-white hover:bg-blue-600">
+                        Startup
                       </Badge>
                       <Badge variant="outline" className="border-blue-300 text-blue-700">
                         {item.sector}
                       </Badge>
+                      {item.yearFounded && (
+                        <Badge variant="outline" className="border-gray-300 text-gray-700">
+                          Founded {item.yearFounded}
+                        </Badge>
+                      )}
                       {item.isAiMatch && item.matchPercentage && (
                         <Badge className="bg-purple-500 text-white">
                           {item.matchPercentage}% match
@@ -411,28 +371,47 @@ const DataExplore = () => {
                   </div>
                 )}
                 
-                <div className="space-y-2">
-                  {item.contactEmail && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Mail className="h-4 w-4 mr-2" />
-                      <a href={`mailto:${item.contactEmail}`} className="hover:text-green-600 transition-colors">
-                        {item.contactEmail}
-                      </a>
-                    </div>
-                  )}
-                  {item.contactPhone && (
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Phone className="h-4 w-4 mr-2" />
-                      <a href={`tel:${item.contactPhone}`} className="hover:text-green-600 transition-colors">
-                        {item.contactPhone}
-                      </a>
-                    </div>
-                  )}
-                </div>
-                
                 {item.notes && (
                   <div className="bg-gray-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-gray-700 mb-1">Problem They Solve:</h4>
                     <p className="text-sm text-gray-600">{item.notes}</p>
+                  </div>
+                )}
+
+                {item.targetBeneficiaries && (
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-blue-700 mb-1">Target Beneficiaries:</h4>
+                    <p className="text-sm text-blue-600">{item.targetBeneficiaries}</p>
+                  </div>
+                )}
+
+                {item.revenueModel && (
+                  <div className="bg-yellow-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-yellow-700 mb-1">Revenue Model:</h4>
+                    <p className="text-sm text-yellow-600">{item.revenueModel}</p>
+                  </div>
+                )}
+
+                {(item.impact || item.awards || item.grants) && (
+                  <div className="space-y-2 text-sm">
+                    {item.impact && (
+                      <div>
+                        <span className="font-medium text-gray-700">Impact: </span>
+                        <span className="text-gray-600">{item.impact}</span>
+                      </div>
+                    )}
+                    {item.awards && (
+                      <div>
+                        <span className="font-medium text-gray-700">Awards: </span>
+                        <span className="text-gray-600">{item.awards}</span>
+                      </div>
+                    )}
+                    {item.grants && (
+                      <div>
+                        <span className="font-medium text-gray-700">Grants: </span>
+                        <span className="text-gray-600">{item.grants}</span>
+                      </div>
+                    )}
                   </div>
                 )}
               </CardContent>
@@ -451,10 +430,10 @@ const DataExplore = () => {
         {/* CTA Section */}
         <div className="text-center mt-12 bg-white/80 backdrop-blur-sm rounded-lg p-8">
           <h3 className="text-2xl font-bold text-gray-900 mb-4">
-            Know an organization we're missing?
+            Know a startup we're missing?
           </h3>
           <p className="text-gray-600 mb-6">
-            Help us build a comprehensive database by contributing information about social enterprises in Malaysia
+            Help us build a comprehensive database by contributing information about startups in Malaysia
           </p>
           <Link to="/contribute">
             <Button className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700">
