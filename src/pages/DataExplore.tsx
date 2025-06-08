@@ -54,21 +54,7 @@ const DataExplore = () => {
         
         console.log("Fetching startup data from startup table...");
         
-        // First, let's check if we can connect to the database at all
-        const { data: testConnection, error: testError } = await supabase
-          .from('startup')
-          .select('count(*)', { count: 'exact', head: true });
-        
-        if (testError) {
-          console.error('Database connection test failed:', testError);
-          toast.error(`Database connection failed: ${testError.message}`);
-          setLoading(false);
-          return;
-        }
-
-        console.log('Database connection successful, total count:', testConnection);
-
-        // Now fetch actual data
+        // Test connection and fetch data
         const { data: startups, error: startupError, count } = await supabase
           .from('startup')
           .select('*', { count: 'exact' });
@@ -114,19 +100,7 @@ const DataExplore = () => {
           toast.success(`Loaded ${transformedData.length} startups successfully!`);
         } else {
           console.log('No startup data found in startup table');
-          
-          // Let's check if the table exists and what columns it has
-          const { data: tableInfo, error: tableError } = await supabase
-            .rpc('get_table_info', { table_name: 'startup' })
-            .single();
-            
-          if (tableError) {
-            console.log('Could not get table info, table might be empty or have permission issues');
-            toast.error("No startup data found. The table might be empty or there might be permission issues.");
-          } else {
-            console.log('Table info:', tableInfo);
-            toast.info("Startup table exists but contains no data");
-          }
+          toast.info("No startup data found. The table might be empty.");
         }
 
         console.log('Final transformed data:', transformedData);
@@ -217,8 +191,8 @@ const DataExplore = () => {
   };
 
   // Generate dynamic filter options from actual data
-  const sectors = [...new Set(organizations.map(item => item.sector))].filter(Boolean);
-  const locations = [...new Set(organizations.map(item => item.location))].filter(Boolean);
+  const sectors = [...new Set(organizations.map(item => item.sector).filter(Boolean))];
+  const locations = [...new Set(organizations.map(item => item.location).filter(Boolean))];
 
   if (loading) {
     return (

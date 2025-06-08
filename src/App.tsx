@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import DataExplore from "./pages/DataExplore";
+import StartupExplore from "./pages/StartupExplore";
 import DataInput from "./pages/DataInput";
 import AdminPanel from "./pages/AdminPanel";
 import Matchmaker from "./pages/Matchmaker";
@@ -24,6 +25,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/explore" element={<DataExplore />} />
+          <Route path="/startups" element={<StartupExplore />} />
           <Route path="/contribute" element={<DataInput />} />
           <Route path="/matchmaker" element={<Matchmaker />} />
           <Route path="/connection-hub" element={<ConnectionHub />} />
