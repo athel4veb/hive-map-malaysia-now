@@ -159,45 +159,69 @@ const AdminPanel = () => {
 
       if (vcError) throw vcError;
 
-      // Process sector distribution for startups
+      // Process sector distribution for startups - handle comma-separated sectors
       const sectorCounts: { [key: string]: number } = {};
       startupData?.forEach(startup => {
-        const sector = startup.Sector || 'Unknown';
-        sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+        const sectors = startup.Sector || 'Unknown';
+        // Split by comma and process each sector
+        const sectorList = sectors.split(',').map(s => s.trim()).filter(s => s);
+        if (sectorList.length === 0) {
+          sectorCounts['Unknown'] = (sectorCounts['Unknown'] || 0) + 1;
+        } else {
+          sectorList.forEach(sector => {
+            sectorCounts[sector] = (sectorCounts[sector] || 0) + 1;
+          });
+        }
       });
 
-      const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0'];
-      const sectorDistribution = Object.entries(sectorCounts).map(([name, value], index) => ({
-        name,
-        value,
-        color: colors[index % colors.length]
-      }));
+      const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#8dd1e1', '#82ca9d', '#ffc658'];
+      const sectorDistribution = Object.entries(sectorCounts)
+        .sort(([,a], [,b]) => b - a) // Sort by count descending
+        .map(([name, value], index) => ({
+          name,
+          value,
+          color: colors[index % colors.length]
+        }));
 
-      // Process yearly trends
+      // Process yearly trends - filter to last 5 years only
+      const currentYear = new Date().getFullYear();
+      const startYear = currentYear - 4; // Last 5 years (including current year)
+      
       const yearCounts: { [key: string]: { startups: number; vcs: number } } = {};
       
+      // Initialize all years in the range
+      for (let year = startYear; year <= currentYear; year++) {
+        yearCounts[year.toString()] = { startups: 0, vcs: 0 };
+      }
+      
       startupData?.forEach(startup => {
-        const year = startup.YearFounded?.toString() || 'Unknown';
-        if (!yearCounts[year]) yearCounts[year] = { startups: 0, vcs: 0 };
-        yearCounts[year].startups++;
+        const year = startup.YearFounded?.toString();
+        if (year && parseInt(year) >= startYear && parseInt(year) <= currentYear) {
+          yearCounts[year].startups++;
+        }
+      });
+
+      // Add mock VC data for visualization (since we don't have year founded for VCs)
+      Object.keys(yearCounts).forEach(year => {
+        yearCounts[year].vcs = Math.floor(Math.random() * 8) + 2; // Mock VC data
       });
 
       const yearlyTrends = Object.entries(yearCounts)
-        .filter(([year]) => year !== 'Unknown' && parseInt(year) >= 2015)
         .sort(([a], [b]) => parseInt(a) - parseInt(b))
-        .slice(-7)
         .map(([year, data]) => ({
           year,
           startups: data.startups,
-          vcs: Math.floor(Math.random() * 10) + 5 // Mock VC data for visualization
+          vcs: data.vcs
         }));
 
       // Generate AI insights
       const totalStartups = startupData?.length || 0;
       const totalVCs = vcData?.length || 0;
       const topSector = sectorDistribution[0]?.name || 'Technology';
+      const recentYearGrowth = yearlyTrends.length > 1 ? 
+        yearlyTrends[yearlyTrends.length - 1].startups - yearlyTrends[yearlyTrends.length - 2].startups : 0;
       
-      const aiInsights = `Based on current data analysis: We have ${totalStartups} startups and ${totalVCs} VC/grant programs in our database. The leading sector is ${topSector} with ${sectorDistribution[0]?.value || 0} companies. Recent trends show steady growth in startup registrations, with strong representation across diverse sectors. Our platform is effectively capturing the entrepreneurial ecosystem's diversity.`;
+      const aiInsights = `Based on current data analysis: Our database contains ${totalStartups} startups and ${totalVCs} VC/grant programs. The leading sector is ${topSector} with ${sectorDistribution[0]?.value || 0} companies. ${recentYearGrowth > 0 ? `Recent growth shows ${recentYearGrowth} new startups this year compared to last year.` : 'Growth has stabilized with consistent registration patterns.'} Sector diversity is strong with ${sectorDistribution.length} different categories represented, indicating a healthy and varied entrepreneurial ecosystem.`;
 
       setDashboardData({
         totalStartups,
@@ -581,7 +605,7 @@ const AdminPanel = () => {
               <CardHeader>
                 <CardTitle className="flex items-center text-xl text-gray-900">
                   <TrendingUp className="h-5 w-5 mr-2 text-green-600" />
-                  Growth Trends (2015-2024)
+                  Growth Trends (Last 5 Years)
                 </CardTitle>
               </CardHeader>
               <CardContent>
