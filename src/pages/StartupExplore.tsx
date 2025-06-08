@@ -187,7 +187,12 @@ const StartupExplore = () => {
     setAiPrompt("");
   };
 
-  const sectors = [...new Set(startups.map(s => s.sector))].filter(Boolean).sort();
+  // Extract and clean up sectors - split by comma and create unique list
+  const allSectors = startups.flatMap(s => 
+    s.sector ? s.sector.split(',').map(sector => sector.trim()) : []
+  );
+  const sectors = [...new Set(allSectors)].filter(Boolean).sort();
+
   const locations = [...new Set(startups.map(s => s.location))].filter(Boolean).sort();
 
   if (loading) {

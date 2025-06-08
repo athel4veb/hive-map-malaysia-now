@@ -163,7 +163,11 @@ const VCExplore = () => {
     setAiPrompt("");
   };
 
-  const sectors = [...new Set(vcData.map(vc => vc.industrySector))].filter(Boolean).sort();
+  // Extract and clean up sectors - split by comma and create unique list
+  const allSectors = vcData.flatMap(vc => 
+    vc.industrySector ? vc.industrySector.split(',').map(sector => sector.trim()) : []
+  );
+  const sectors = [...new Set(allSectors)].filter(Boolean).sort();
 
   if (loading) {
     return (
