@@ -1,6 +1,5 @@
-
-import { useState } from "react";
-import { Plus, Trash2, Globe, Download, Upload } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, Globe, Download, Upload, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,9 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Navbar } from "@/components/Navbar";
+import { supabase } from "@/integrations/supabase/client";
+import { User } from "@supabase/supabase-js";
+import { useNavigate } from "react-router-dom";
 
 const AdminPanel = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [urls, setUrls] = useState([
     "https://www.adb.org/countries/malaysia/social-enterprises",
     "https://www.sbc.org.my/directory",
@@ -19,6 +24,41 @@ const AdminPanel = () => {
   const [newUrl, setNewUrl] = useState("");
   const [bulkUrls, setBulkUrls] = useState("");
   const [isScrapingActive, setIsScrapingActive] = useState(false);
+
+  useEffect(() => {
+    // Check authentication status
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate('/auth');
+        return;
+      }
+      setUser(session.user);
+      setLoading(false);
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) {
+        navigate('/auth');
+      } else {
+        setUser(session.user);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully.",
+    });
+  };
 
   const addUrl = () => {
     if (newUrl.trim() && !urls.includes(newUrl.trim())) {
@@ -105,15 +145,46 @@ const AdminPanel = () => {
     });
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null; // Will redirect to auth page
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100">
       <Navbar />
       
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Admin Panel
-          </h1>
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-4xl font-bold text-gray-900">
+              Admin Panel
+            </h1>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600">
+                Welcome, {user.email}
+              </span>
+              <Button
+                onClick={handleLogout}
+                variant="outline"
+                size="sm"
+                className="border-red-300 text-red-700 hover:bg-red-50"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
+          </div>
           <p className="text-lg text-gray-600">
             Manage data sources and monitor scraping activities
           </p>
