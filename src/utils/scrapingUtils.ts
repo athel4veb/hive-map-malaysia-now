@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 
@@ -70,7 +69,7 @@ export const startScrapingProcess = async (
     } else if (urlType === "vc") {
       try {
         console.log("Triggering n8n webhook for VC scraping...");
-        await fetch("https://n8n.vebmy.com/webhook/scrapevc", {
+        await fetch("https://n8n.vebmy.com/webhook-test/scrapevc", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
