@@ -87,7 +87,7 @@ const DataExplore = () => {
           });
         }
 
-        // Transform startups
+        // Transform startups - using correct column names from the database schema
         if (startups) {
           startups.forEach((startup) => {
             transformedData.push({
@@ -105,6 +105,7 @@ const DataExplore = () => {
           });
         }
 
+        console.log('Transformed data:', transformedData);
         setOrganizations(transformedData);
       } catch (error) {
         console.error('Error fetching data:', error);
