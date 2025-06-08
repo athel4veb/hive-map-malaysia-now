@@ -96,54 +96,54 @@ export type Database = {
       startup: {
         Row: {
           Awards: string | null
-          "Company Name": string | null
+          CompanyName: string | null
           Grants: string | null
           Impact: string | null
-          "Institutional Support": string | null
+          InstitutionalSupport: string | null
           Location: string | null
-          "MaGIC Accredited": string | null
+          MaGICAccredited: string | null
           No: number | null
-          "Problem They Solve": string | null
-          "Revenue Model": string | null
+          ProblemTheySolve: string | null
+          RevenueModel: string | null
           Sector: string | null
-          "Target Beneficiaries": string | null
-          "Website/Social Media": string | null
-          "What They Do": string | null
-          "Year Founded": number | null
+          TargetBeneficiaries: string | null
+          WebsiteSocialMedia: string | null
+          WhatTheyDo: string | null
+          YearFounded: number | null
         }
         Insert: {
           Awards?: string | null
-          "Company Name"?: string | null
+          CompanyName?: string | null
           Grants?: string | null
           Impact?: string | null
-          "Institutional Support"?: string | null
+          InstitutionalSupport?: string | null
           Location?: string | null
-          "MaGIC Accredited"?: string | null
+          MaGICAccredited?: string | null
           No?: number | null
-          "Problem They Solve"?: string | null
-          "Revenue Model"?: string | null
+          ProblemTheySolve?: string | null
+          RevenueModel?: string | null
           Sector?: string | null
-          "Target Beneficiaries"?: string | null
-          "Website/Social Media"?: string | null
-          "What They Do"?: string | null
-          "Year Founded"?: number | null
+          TargetBeneficiaries?: string | null
+          WebsiteSocialMedia?: string | null
+          WhatTheyDo?: string | null
+          YearFounded?: number | null
         }
         Update: {
           Awards?: string | null
-          "Company Name"?: string | null
+          CompanyName?: string | null
           Grants?: string | null
           Impact?: string | null
-          "Institutional Support"?: string | null
+          InstitutionalSupport?: string | null
           Location?: string | null
-          "MaGIC Accredited"?: string | null
+          MaGICAccredited?: string | null
           No?: number | null
-          "Problem They Solve"?: string | null
-          "Revenue Model"?: string | null
+          ProblemTheySolve?: string | null
+          RevenueModel?: string | null
           Sector?: string | null
-          "Target Beneficiaries"?: string | null
-          "Website/Social Media"?: string | null
-          "What They Do"?: string | null
-          "Year Founded"?: number | null
+          TargetBeneficiaries?: string | null
+          WebsiteSocialMedia?: string | null
+          WhatTheyDo?: string | null
+          YearFounded?: number | null
         }
         Relationships: []
       }

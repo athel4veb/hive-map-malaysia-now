@@ -11,7 +11,6 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface Organization {
   id: string | number;
@@ -44,55 +43,13 @@ const DataExplore = () => {
   const [showAiResults, setShowAiResults] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
-  const [connectionStatus, setConnectionStatus] = useState<string>("");
 
-  const [showRawData, setShowRawData] = useState(false);
-  const [rawStartupData, setRawStartupData] = useState<any[]>([]);
-
-  // Test Supabase connection
-  const testConnection = async () => {
-    try {
-      console.log("Testing Supabase connection...");
-      setConnectionStatus("Testing connection...");
-      
-      // Test basic connection to startup table
-      const { data: connectionTest, error: connectionError } = await supabase
-        .from('startup')
-        .select('count', { count: 'exact', head: true });
-      
-      if (connectionError) {
-        console.error('Connection error:', connectionError);
-        setConnectionStatus(`Connection failed: ${connectionError.message}`);
-        toast.error(`Connection failed: ${connectionError.message}`);
-        return false;
-      }
-      
-      console.log('Connection successful, row count:', connectionTest);
-      setConnectionStatus(`Connected successfully. Startup table has ${connectionTest || 0} rows.`);
-      toast.success("Supabase connection successful!");
-      return true;
-    } catch (error) {
-      console.error('Unexpected error:', error);
-      setConnectionStatus(`Unexpected error: ${error}`);
-      toast.error("Connection test failed");
-      return false;
-    }
-  };
-
-  // Fetch data from Supabase
+  // Fetch data from Supabase startup table
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Test connection first
-        const isConnected = await testConnection();
-        if (!isConnected) {
-          setLoading(false);
-          return;
-        }
-        
-        // Fetch all startups from startup table
         console.log("Fetching startup data from startup table...");
         const { data: startups, error: startupError } = await supabase
           .from('startup')
@@ -111,28 +68,28 @@ const DataExplore = () => {
         // Transform data to unified format
         const transformedData: Organization[] = [];
 
-        // Transform startups from startup table
         if (startups && startups.length > 0) {
           startups.forEach((startup) => {
             console.log('Processing startup:', startup);
             transformedData.push({
               id: `startup-${startup.No || Math.random()}`,
-              name: startup["Company Name"] || 'Unknown Startup',
-              website: startup["Website/Social Media"] || '',
-              description: startup["What They Do"] || '',
+              name: startup.CompanyName || 'Unknown Startup',
+              website: startup.WebsiteSocialMedia || '',
+              description: startup.WhatTheyDo || '',
               sector: startup.Sector || 'Various',
               location: startup.Location || 'Malaysia',
               contactEmail: '',
               contactPhone: '',
-              notes: startup["Problem They Solve"] || '',
-              yearFounded: startup["Year Founded"] || undefined,
-              targetBeneficiaries: startup["Target Beneficiaries"] || '',
-              revenueModel: startup["Revenue Model"] || '',
+              notes: startup.ProblemTheySolve || '',
+              yearFounded: startup.YearFounded || undefined,
+              targetBeneficiaries: startup.TargetBeneficiaries || '',
+              revenueModel: startup.RevenueModel || '',
               impact: startup.Impact || '',
               awards: startup.Awards || '',
               grants: startup.Grants || ''
             });
           });
+          toast.success(`Loaded ${transformedData.length} startups successfully!`);
         } else {
           console.log('No startup data found in startup table');
           toast.info("No startup data found in the startup table");
@@ -227,38 +184,6 @@ const DataExplore = () => {
     setAiPrompt("");
   };
 
-  // Manual fetch function to show raw data from startup table
-  const fetchRawStartupData = async () => {
-    try {
-      console.log("Manually fetching ALL data from startup table...");
-      const { data, error } = await supabase
-        .from('startup')
-        .select('*');
-      
-      if (error) {
-        console.error('Error fetching raw startup data:', error);
-        toast.error(`Error: ${error.message}`);
-        return;
-      }
-
-      console.log('Raw startup table data:', data);
-      console.log('Total rows fetched from startup table:', data?.length || 0);
-      
-      if (data && data.length > 0) {
-        data.forEach((row, index) => {
-          console.log(`Row ${index + 1}:`, row);
-        });
-      }
-      
-      setRawStartupData(data || []);
-      setShowRawData(true);
-      toast.success(`Found ${data?.length || 0} rows in startup table`);
-    } catch (error) {
-      console.error('Unexpected error fetching raw data:', error);
-      toast.error('Failed to fetch raw data');
-    }
-  };
-
   // Generate dynamic filter options from actual data
   const sectors = [...new Set(organizations.map(item => item.sector))].filter(Boolean);
   const locations = [...new Set(organizations.map(item => item.location))].filter(Boolean);
@@ -268,10 +193,7 @@ const DataExplore = () => {
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4" />
-          <p className="text-gray-600">Testing Supabase connection and loading data...</p>
-          {connectionStatus && (
-            <p className="text-sm text-gray-500 mt-2">{connectionStatus}</p>
-          )}
+          <p className="text-gray-600">Loading startup data...</p>
         </div>
       </div>
     );
@@ -290,65 +212,6 @@ const DataExplore = () => {
           <p className="text-lg text-gray-600">
             Explore {organizations.length} startups in Malaysia's social enterprise ecosystem
           </p>
-          {connectionStatus && (
-            <p className="text-sm text-gray-500 mt-2">
-              Connection Status: {connectionStatus}
-            </p>
-          )}
-        </div>
-
-        {/* Debug Section - Manual Data Fetch */}
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-red-800 mb-2">Debug: Manual Data Fetch from Startup Table</h3>
-          <p className="text-red-700 mb-4">Click below to manually fetch and display raw data from the startup table:</p>
-          <div className="flex gap-3 mb-4">
-            <Button onClick={fetchRawStartupData} variant="outline" className="border-red-300">
-              Fetch Raw Startup Data
-            </Button>
-            {showRawData && (
-              <Button onClick={() => setShowRawData(false)} variant="outline">
-                Hide Raw Data
-              </Button>
-            )}
-          </div>
-          
-          {showRawData && (
-            <div className="mt-4">
-              <h4 className="font-medium text-red-800 mb-2">Raw Startup Table Data ({rawStartupData.length} rows):</h4>
-              {rawStartupData.length > 0 ? (
-                <div className="bg-white rounded border max-h-96 overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>No</TableHead>
-                        <TableHead>Company Name</TableHead>
-                        <TableHead>What They Do</TableHead>
-                        <TableHead>Sector</TableHead>
-                        <TableHead>Location</TableHead>
-                        <TableHead>Year Founded</TableHead>
-                        <TableHead>Website</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {rawStartupData.map((row, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{row.No || 'N/A'}</TableCell>
-                          <TableCell>{row["Company Name"] || 'N/A'}</TableCell>
-                          <TableCell className="max-w-xs truncate">{row["What They Do"] || 'N/A'}</TableCell>
-                          <TableCell>{row.Sector || 'N/A'}</TableCell>
-                          <TableCell>{row.Location || 'N/A'}</TableCell>
-                          <TableCell>{row["Year Founded"] || 'N/A'}</TableCell>
-                          <TableCell className="max-w-xs truncate">{row["Website/Social Media"] || 'N/A'}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <p className="text-red-600 bg-white p-4 rounded border">No data found in startup table</p>
-              )}
-            </div>
-          )}
         </div>
 
         {/* AI-Powered Search Section */}
