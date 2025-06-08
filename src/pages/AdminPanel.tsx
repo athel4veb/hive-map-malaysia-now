@@ -423,7 +423,7 @@ const AdminPanel = () => {
         console.log("No new URLs to save to database");
       }
 
-      // Trigger n8n webhook for startup scraping
+      // Trigger appropriate n8n webhook based on URL type
       if (urlType === "startup") {
         try {
           console.log("Triggering n8n webhook for startup scraping...");
@@ -442,26 +442,52 @@ const AdminPanel = () => {
             }),
           });
 
-          console.log("Webhook request sent to n8n");
+          console.log("Startup webhook request sent to n8n");
           
           toast({
             title: "Scraping Started",
             description: `Initiated startup scraping for ${urls.length} URLs. Webhook triggered successfully.`,
           });
         } catch (webhookError) {
-          console.error("Error triggering n8n webhook:", webhookError);
+          console.error("Error triggering startup n8n webhook:", webhookError);
           toast({
             title: "Webhook Error",
-            description: "Failed to trigger n8n webhook, but URLs were saved to database.",
+            description: "Failed to trigger startup n8n webhook, but URLs were saved to database.",
             variant: "destructive",
           });
         }
-      } else {
-        // For VC scraping, show the regular message
-        toast({
-          title: "Scraping Started",
-          description: `Initiated VC/Grant scraping for ${urls.length} URLs. All URLs have been saved to the database.`,
-        });
+      } else if (urlType === "vc") {
+        try {
+          console.log("Triggering n8n webhook for VC scraping...");
+          const webhookResponse = await fetch("https://n8n.vebmy.com/webhook/scrapevc", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            mode: "no-cors", // Handle CORS issues
+            body: JSON.stringify({
+              urls: urls,
+              timestamp: new Date().toISOString(),
+              triggered_from: "ASBhive_Admin_Panel",
+              user_id: user?.id,
+              total_urls: urls.length
+            }),
+          });
+
+          console.log("VC webhook request sent to n8n");
+          
+          toast({
+            title: "Scraping Started",
+            description: `Initiated VC/Grant scraping for ${urls.length} URLs. Webhook triggered successfully.`,
+          });
+        } catch (webhookError) {
+          console.error("Error triggering VC n8n webhook:", webhookError);
+          toast({
+            title: "Webhook Error",
+            description: "Failed to trigger VC n8n webhook, but URLs were saved to database.",
+            variant: "destructive",
+          });
+        }
       }
 
       // Simulate scraping process completion
