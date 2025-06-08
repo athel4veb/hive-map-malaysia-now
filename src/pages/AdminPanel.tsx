@@ -159,7 +159,7 @@ const AdminPanel = () => {
 
       if (vcError) throw vcError;
 
-      // Process sector distribution for startups - handle comma-separated sectors
+      // Process sector distribution for startups - handle comma-separated sectors and limit to top 10
       const sectorCounts: { [key: string]: number } = {};
       startupData?.forEach(startup => {
         const sectors = startup.Sector || 'Unknown';
@@ -174,9 +174,12 @@ const AdminPanel = () => {
         }
       });
 
-      const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#8dd1e1', '#82ca9d', '#ffc658'];
+      const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#8dd1e1', '#d084d0', '#ffb347', '#87ceeb', '#dda0dd', '#98fb98'];
+      
+      // Get top 10 sectors only
       const sectorDistribution = Object.entries(sectorCounts)
         .sort(([,a], [,b]) => b - a) // Sort by count descending
+        .slice(0, 10) // Take only top 10
         .map(([name, value], index) => ({
           name,
           value,
@@ -221,7 +224,7 @@ const AdminPanel = () => {
       const recentYearGrowth = yearlyTrends.length > 1 ? 
         yearlyTrends[yearlyTrends.length - 1].startups - yearlyTrends[yearlyTrends.length - 2].startups : 0;
       
-      const aiInsights = `Based on current data analysis: Our database contains ${totalStartups} startups and ${totalVCs} VC/grant programs. The leading sector is ${topSector} with ${sectorDistribution[0]?.value || 0} companies. ${recentYearGrowth > 0 ? `Recent growth shows ${recentYearGrowth} new startups this year compared to last year.` : 'Growth has stabilized with consistent registration patterns.'} Sector diversity is strong with ${sectorDistribution.length} different categories represented, indicating a healthy and varied entrepreneurial ecosystem.`;
+      const aiInsights = `Based on current data analysis: Our database contains ${totalStartups} startups and ${totalVCs} VC/grant programs. The leading sector is ${topSector} with ${sectorDistribution[0]?.value || 0} companies. ${recentYearGrowth > 0 ? `Recent growth shows ${recentYearGrowth} new startups this year compared to last year.` : 'Growth has stabilized with consistent registration patterns.'} Sector diversity is strong with ${sectorDistribution.length} different categories represented in the top 10, indicating a healthy and varied entrepreneurial ecosystem.`;
 
       setDashboardData({
         totalStartups,
@@ -556,7 +559,7 @@ const AdminPanel = () => {
             <Card className="bg-gradient-to-r from-purple-50 to-purple-100 border-purple-200">
               <CardContent className="p-6 text-center">
                 <div className="text-3xl font-bold text-purple-700">{dashboardData.sectorDistribution.length}</div>
-                <div className="text-sm text-purple-600">Active Sectors</div>
+                <div className="text-sm text-purple-600">Top Sectors</div>
               </CardContent>
             </Card>
             <Card className="bg-gradient-to-r from-orange-50 to-orange-100 border-orange-200">
@@ -574,29 +577,31 @@ const AdminPanel = () => {
               <CardHeader>
                 <CardTitle className="flex items-center text-xl text-gray-900">
                   <PieChart className="h-5 w-5 mr-2 text-purple-600" />
-                  Startup Sector Distribution
+                  Startup Sector Distribution (Top 10)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
-                  <RechartsPieChart>
-                    <Pie
-                      data={dashboardData.sectorDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {dashboardData.sectorDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                  </RechartsPieChart>
-                </ChartContainer>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RechartsPieChart>
+                      <Pie
+                        data={dashboardData.sectorDistribution}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={80}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {dashboardData.sectorDistribution.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </RechartsPieChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
 
@@ -609,16 +614,18 @@ const AdminPanel = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px]">
-                  <LineChart data={dashboardData.yearlyTrends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="year" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="startups" stroke="#8884d8" strokeWidth={3} />
-                    <Line type="monotone" dataKey="vcs" stroke="#82ca9d" strokeWidth={3} />
-                  </LineChart>
-                </ChartContainer>
+                <div className="h-[300px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={dashboardData.yearlyTrends} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="year" />
+                      <YAxis />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line type="monotone" dataKey="startups" stroke="#8884d8" strokeWidth={3} name="Startups" />
+                      <Line type="monotone" dataKey="vcs" stroke="#82ca9d" strokeWidth={3} name="VCs" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               </CardContent>
             </Card>
           </div>
