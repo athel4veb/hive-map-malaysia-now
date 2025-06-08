@@ -9,6 +9,7 @@ import DataExplore from "./pages/DataExplore";
 import DataInput from "./pages/DataInput";
 import AdminPanel from "./pages/AdminPanel";
 import Matchmaker from "./pages/Matchmaker";
+import ConnectionHub from "./pages/ConnectionHub";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/explore" element={<DataExplore />} />
           <Route path="/contribute" element={<DataInput />} />
           <Route path="/matchmaker" element={<Matchmaker />} />
+          <Route path="/connection-hub" element={<ConnectionHub />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/auth" element={<Auth />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

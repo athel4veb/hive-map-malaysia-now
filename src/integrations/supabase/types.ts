@@ -93,6 +93,45 @@ export type Database = {
         }
         Relationships: []
       }
+      startups: {
+        Row: {
+          contact_info: string | null
+          description: string | null
+          founding_year: number | null
+          id: number
+          industry_sector: string | null
+          inserted_at: string | null
+          location: string | null
+          related_news_updates: string | null
+          startup_name: string | null
+          website_url: string | null
+        }
+        Insert: {
+          contact_info?: string | null
+          description?: string | null
+          founding_year?: number | null
+          id?: number
+          industry_sector?: string | null
+          inserted_at?: string | null
+          location?: string | null
+          related_news_updates?: string | null
+          startup_name?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          contact_info?: string | null
+          description?: string | null
+          founding_year?: number | null
+          id?: number
+          industry_sector?: string | null
+          inserted_at?: string | null
+          location?: string | null
+          related_news_updates?: string | null
+          startup_name?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
