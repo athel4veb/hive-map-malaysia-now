@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Globe, Download, Upload, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -100,6 +99,44 @@ const AdminPanel = () => {
     }
   };
 
+  const saveAllUrlsToDatabase = async () => {
+    const tableName = urlType === "vc" ? "grant_urls" : "startup_urls";
+    
+    try {
+      // Get existing URLs from the database to avoid duplicates
+      const { data: existingUrls, error: fetchError } = await supabase
+        .from(tableName)
+        .select('url');
+
+      if (fetchError) {
+        console.error('Error fetching existing URLs:', fetchError);
+        return;
+      }
+
+      const existingUrlSet = new Set(existingUrls?.map(item => item.url) || []);
+      
+      // Filter out URLs that already exist in the database
+      const urlsToInsert = urls.filter(url => !existingUrlSet.has(url));
+      
+      if (urlsToInsert.length > 0) {
+        const urlObjects = urlsToInsert.map(url => ({ url }));
+        const { error } = await supabase
+          .from(tableName)
+          .insert(urlObjects);
+
+        if (error) {
+          console.error(`Error saving URLs to ${tableName}:`, error);
+          throw error;
+        }
+
+        console.log(`Saved ${urlsToInsert.length} new URLs to ${tableName}`);
+      }
+    } catch (error) {
+      console.error('Error in saveAllUrlsToDatabase:', error);
+      throw error;
+    }
+  };
+
   const addUrl = async () => {
     if (newUrl.trim() && !urls.includes(newUrl.trim())) {
       try {
@@ -157,7 +194,7 @@ const AdminPanel = () => {
     }
   };
 
-  const startScraping = () => {
+  const startScraping = async () => {
     if (urls.length === 0) {
       toast({
         title: "No URLs",
@@ -167,22 +204,35 @@ const AdminPanel = () => {
       return;
     }
 
-    setIsScrapingActive(true);
-    console.log(`Starting ${urlType} scraping for URLs:`, urls);
-    
-    toast({
-      title: "Scraping Started",
-      description: `Initiated ${urlType === "vc" ? "VC" : "startup"} scraping for ${urls.length} URLs. This may take several minutes.`,
-    });
+    try {
+      setIsScrapingActive(true);
+      
+      // Save all current URLs to the database before starting scraping
+      await saveAllUrlsToDatabase();
+      
+      console.log(`Starting ${urlType} scraping for URLs:`, urls);
+      
+      toast({
+        title: "Scraping Started",
+        description: `Initiated ${urlType === "vc" ? "VC" : "startup"} scraping for ${urls.length} URLs. All URLs have been saved to the database.`,
+      });
 
-    // Simulate scraping process
-    setTimeout(() => {
+      // Simulate scraping process
+      setTimeout(() => {
+        setIsScrapingActive(false);
+        toast({
+          title: "Scraping Complete",
+          description: `${urlType === "vc" ? "VC" : "Startup"} data extraction completed. New entries have been added to the database.`,
+        });
+      }, 5000);
+    } catch (error) {
       setIsScrapingActive(false);
       toast({
-        title: "Scraping Complete",
-        description: `${urlType === "vc" ? "VC" : "Startup"} data extraction completed. New entries have been added to the database.`,
+        title: "Error",
+        description: "Failed to save URLs to database before starting scraping.",
+        variant: "destructive",
       });
-    }, 5000);
+    }
   };
 
   const exportData = () => {
