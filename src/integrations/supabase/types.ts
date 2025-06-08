@@ -93,6 +93,21 @@ export type Database = {
         }
         Relationships: []
       }
+      startup_urls: {
+        Row: {
+          created_at: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       startups: {
         Row: {
           contact_info: string | null

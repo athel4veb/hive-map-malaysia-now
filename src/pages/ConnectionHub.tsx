@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Users, Zap, Trophy, Heart, Lightbulb, Rocket, Star, Target, Gift, Sparkles, Crown, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,7 +33,6 @@ const connectionChallenges = [
     title: "Knowledge Sharing",
     description: "Help 5 entrepreneurs with advice",
     icon: "🧠",
-    points: 300,
     points: 300,
     progress: 2,
     target: 5,
