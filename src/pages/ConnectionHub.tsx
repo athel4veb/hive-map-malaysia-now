@@ -1,369 +1,425 @@
+
 import { useState, useEffect } from "react";
-import { Users, Zap, Trophy, Heart, Lightbulb, Rocket, Star, Target, Gift, Sparkles, Crown, Award } from "lucide-react";
+import { Users, Zap, Trophy, Heart, Lightbulb, Rocket, Star, Target, Gift, Sparkles, Crown, Award, Building2, Mail, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Navbar } from "@/components/Navbar";
-import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-const connectionChallenges = [
-  {
-    id: 1,
-    title: "Coffee Chat Challenge",
-    description: "Set up 3 virtual coffee chats this week",
-    icon: "☕",
-    points: 150,
-    progress: 1,
-    target: 3,
-    difficulty: "Easy"
-  },
-  {
-    id: 2,
-    title: "Pitch Perfect",
-    description: "Share your 60-second elevator pitch",
-    icon: "🎯",
-    points: 200,
-    progress: 0,
-    target: 1,
-    difficulty: "Medium"
-  },
-  {
-    id: 3,
-    title: "Knowledge Sharing",
-    description: "Help 5 entrepreneurs with advice",
-    icon: "🧠",
-    points: 300,
-    progress: 2,
-    target: 5,
-    difficulty: "Hard"
-  }
-];
+interface GrantProgram {
+  id: number;
+  company_name: string | null;
+  fund_name: string | null;
+  industry_sector: string | null;
+  description_services: string | null;
+  contact_info: string | null;
+  website_url: string | null;
+}
 
-const collaborationGames = [
-  {
-    id: 1,
-    title: "Startup Speed Dating",
-    description: "3-minute rapid connections with VCs",
-    participants: 12,
-    timeLeft: "2h 30m",
-    status: "joining",
-    icon: "💕"
-  },
-  {
-    id: 2,
-    title: "Innovation Jam Session",
-    description: "Collaborative problem-solving workshop",
-    participants: 8,
-    timeLeft: "45m",
-    status: "live",
-    icon: "🎵"
-  },
-  {
-    id: 3,
-    title: "Future Builders Tournament",
-    description: "Team up to solve real-world challenges",
-    participants: 24,
-    timeLeft: "Next Monday",
-    status: "upcoming",
-    icon: "🏆"
-  }
-];
+interface ConnectionChallenge {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  points: number;
+  progress: number;
+  target: number;
+  completed: boolean;
+}
 
-const achievements = [
-  { title: "First Connection", icon: "🤝", unlocked: true },
-  { title: "Conversation Starter", icon: "💬", unlocked: true },
-  { title: "Network Builder", icon: "🌐", unlocked: false },
-  { title: "Collaboration Champion", icon: "👑", unlocked: false }
-];
+interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  rarity: "common" | "rare" | "epic" | "legendary";
+}
 
 const ConnectionHub = () => {
-  const navigate = useNavigate();
-  const [userPoints, setUserPoints] = useState(420);
   const [userLevel, setUserLevel] = useState(3);
-  const [streak, setStreak] = useState(7);
-  const [showConfetti, setShowConfetti] = useState(false);
+  const [userPoints, setUserPoints] = useState(1250);
+  const [userRank, setUserRank] = useState("Connector");
+  const [grantPrograms, setGrantPrograms] = useState<GrantProgram[]>([]);
+  const [selectedSector, setSelectedSector] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
-  const handleJoinGame = (gameId: number) => {
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 3000);
-    // Here you would implement the actual game joining logic
+  const connectionChallenges: ConnectionChallenge[] = [
+    {
+      id: "1",
+      title: "First Connection",
+      description: "Connect with your first VC or startup",
+      icon: "🤝",
+      points: 100,
+      progress: 1,
+      target: 1,
+      completed: true,
+    },
+    {
+      id: "2",
+      title: "Sector Explorer",
+      description: "Connect with VCs from 3 different sectors",
+      icon: "🌐",
+      points: 250,
+      progress: 2,
+      target: 3,
+      completed: false,
+    },
+    {
+      id: "3",
+      title: "Knowledge Sharing",
+      description: "Help 5 entrepreneurs with advice",
+      icon: "🧠",
+      points: 300,
+      progress: 2,
+      target: 5,
+      completed: false,
+    },
+  ];
+
+  const achievements: Achievement[] = [
+    {
+      id: "1",
+      title: "Network Builder",
+      description: "Made 10 successful connections",
+      icon: "🏗️",
+      unlocked: true,
+      rarity: "common",
+    },
+    {
+      id: "2",
+      title: "Sector Specialist",
+      description: "Connected with VCs in your expertise area",
+      icon: "💎",
+      unlocked: true,
+      rarity: "rare",
+    },
+    {
+      id: "3",
+      title: "Collaboration King",
+      description: "Completed 5 collaboration challenges",
+      icon: "👑",
+      unlocked: false,
+      rarity: "legendary",
+    },
+  ];
+
+  useEffect(() => {
+    fetchGrantPrograms();
+  }, []);
+
+  const fetchGrantPrograms = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('grant_programs')
+        .select('*')
+        .order('id');
+
+      if (error) {
+        throw error;
+      }
+
+      setGrantPrograms(data || []);
+    } catch (error) {
+      console.error('Error fetching grant programs:', error);
+      toast({
+        title: "Error loading VCs",
+        description: "Could not load VC data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleCompleteChallenge = (challengeId: number) => {
+  const getUniqueSectors = () => {
+    const sectors = grantPrograms
+      .filter(program => program.industry_sector)
+      .map(program => program.industry_sector!)
+      .filter((sector, index, array) => array.indexOf(sector) === index);
+    return sectors;
+  };
+
+  const getFilteredPrograms = () => {
+    if (selectedSector === "all") {
+      return grantPrograms;
+    }
+    return grantPrograms.filter(program => program.industry_sector === selectedSector);
+  };
+
+  const calculateMatchScore = (program: GrantProgram) => {
+    // Simple matching algorithm based on available data
+    let score = Math.floor(Math.random() * 30) + 70; // Base score 70-100
+    
+    // Boost score if has complete information
+    if (program.description_services) score += 5;
+    if (program.contact_info) score += 5;
+    if (program.website_url) score += 5;
+    
+    return Math.min(score, 100);
+  };
+
+  const handleConnect = (program: GrantProgram) => {
+    toast({
+      title: "Connection Initiated!",
+      description: `You've sent a connection request to ${program.company_name || program.fund_name}`,
+    });
+    
+    // Update points (this would normally be saved to a user profile)
     setUserPoints(prev => prev + 50);
-    // Here you would implement challenge completion logic
+  };
+
+  const getRarityColor = (rarity: string) => {
+    switch (rarity) {
+      case "common": return "bg-gray-100 text-gray-800";
+      case "rare": return "bg-blue-100 text-blue-800";
+      case "epic": return "bg-purple-100 text-purple-800";
+      case "legendary": return "bg-yellow-100 text-yellow-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-green-50 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
       <Navbar />
       
-      {/* Confetti Animation */}
-      {showConfetti && (
-        <div className="fixed inset-0 pointer-events-none z-50">
-          {[...Array(50)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute animate-bounce"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 3}s`
-              }}
-            >
-              🎉
-            </div>
-          ))}
-        </div>
-      )}
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header Section */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center mb-4">
-            <Sparkles className="h-8 w-8 text-purple-600 mr-2" />
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-              Connection Hub
-            </h1>
-            <Sparkles className="h-8 w-8 text-blue-600 ml-2" />
-          </div>
-          <p className="text-lg text-gray-600 mb-6">
-            Where VCs and Startups Connect, Collaborate, and Create Magic ✨
-          </p>
-          
-          {/* User Stats */}
-          <div className="flex justify-center items-center space-x-8 mb-8">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{userPoints}</div>
-              <div className="text-sm text-gray-500">Connection Points</div>
+        {/* Header with gamification stats */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Connection Hub
+              </h1>
+              <p className="text-gray-600 mt-2">Level up your networking game!</p>
             </div>
-            <div className="text-center">
-              <div className="flex items-center justify-center">
-                <Crown className="h-5 w-5 text-yellow-500 mr-1" />
-                <span className="text-2xl font-bold text-yellow-600">Level {userLevel}</span>
+            
+            <div className="flex items-center gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">{userPoints}</div>
+                <div className="text-sm text-gray-500">Points</div>
               </div>
-              <div className="text-sm text-gray-500">Network Level</div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-pink-600">Level {userLevel}</div>
+                <div className="text-sm text-gray-500">{userRank}</div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Crown className="h-5 w-5 text-yellow-500" />
+                <span className="text-sm font-medium">#12 Global</span>
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{streak} 🔥</div>
-              <div className="text-sm text-gray-500">Day Streak</div>
+          </div>
+
+          {/* Level progress */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium">Progress to Level {userLevel + 1}</span>
+              <span className="text-sm text-gray-500">{userPoints}/1500 XP</span>
             </div>
+            <Progress value={(userPoints % 1500) / 15} className="h-2" />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Connection Challenges */}
-          <div className="lg:col-span-2">
-            <Card className="bg-white/80 backdrop-blur-sm shadow-xl border-2 border-purple-100">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-6 w-6 text-purple-600" />
-                  Daily Connection Challenges
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {connectionChallenges.map((challenge) => (
-                  <div key={challenge.id} className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{challenge.icon}</span>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{challenge.title}</h3>
-                          <p className="text-sm text-gray-600">{challenge.description}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge className={`${
-                          challenge.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
-                          challenge.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {challenge.difficulty}
-                        </Badge>
-                        <div className="text-sm font-medium text-purple-600 mt-1">
-                          +{challenge.points} pts
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 mr-4">
-                        <div className="flex items-center justify-between text-sm mb-1">
-                          <span>Progress</span>
-                          <span>{challenge.progress}/{challenge.target}</span>
-                        </div>
-                        <Progress 
-                          value={(challenge.progress / challenge.target) * 100} 
-                          className="h-2"
-                        />
-                      </div>
-                      <Button 
-                        size="sm"
-                        onClick={() => handleCompleteChallenge(challenge.id)}
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                      >
-                        {challenge.progress >= challenge.target ? "Claim" : "Continue"}
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+        <Tabs defaultValue="discover" className="space-y-6">
+          <TabsList className="bg-white/80 backdrop-blur-sm">
+            <TabsTrigger value="discover">🔍 Discover VCs</TabsTrigger>
+            <TabsTrigger value="challenges">🎯 Challenges</TabsTrigger>
+            <TabsTrigger value="achievements">🏆 Achievements</TabsTrigger>
+          </TabsList>
 
-            {/* Collaboration Games */}
-            <Card className="bg-white/80 backdrop-blur-sm shadow-xl border-2 border-blue-100 mt-6">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-6 w-6 text-blue-600" />
-                  Live Collaboration Games
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {collaborationGames.map((game) => (
-                  <div key={game.id} className="p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{game.icon}</span>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{game.title}</h3>
-                          <p className="text-sm text-gray-600">{game.description}</p>
-                          <div className="flex items-center gap-4 mt-2">
-                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              {game.participants} participants
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {game.status === 'live' ? '🔴 LIVE' : 
-                               game.status === 'joining' ? '🟡 Joining' : '🟢 Upcoming'}
-                            </span>
+          <TabsContent value="discover" className="space-y-6">
+            {/* Sector filter */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4">
+              <h3 className="font-semibold mb-3">Filter by Sector</h3>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={selectedSector === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedSector("all")}
+                >
+                  All Sectors
+                </Button>
+                {getUniqueSectors().map((sector) => (
+                  <Button
+                    key={sector}
+                    variant={selectedSector === sector ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedSector(sector)}
+                  >
+                    {sector}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* VC/Grant Programs List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {isLoading ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <Card key={i} className="bg-white/80 backdrop-blur-sm animate-pulse">
+                    <CardContent className="p-6">
+                      <div className="h-4 bg-gray-200 rounded mb-3"></div>
+                      <div className="h-3 bg-gray-200 rounded mb-2"></div>
+                      <div className="h-3 bg-gray-200 rounded"></div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                getFilteredPrograms().map((program) => {
+                  const matchScore = calculateMatchScore(program);
+                  return (
+                    <Card key={program.id} className="bg-white/80 backdrop-blur-sm hover:shadow-lg transition-all duration-300 hover:scale-105">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="h-5 w-5 text-purple-600" />
+                            <CardTitle className="text-lg">
+                              {program.company_name || program.fund_name || "Unnamed Fund"}
+                            </CardTitle>
+                          </div>
+                          <Badge className={`${matchScore >= 90 ? 'bg-green-100 text-green-800' : matchScore >= 80 ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {matchScore}% Match
+                          </Badge>
+                        </div>
+                        {program.fund_name && program.company_name && (
+                          <p className="text-sm text-gray-600">{program.fund_name}</p>
+                        )}
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="space-y-3">
+                          {program.industry_sector && (
+                            <div>
+                              <Badge variant="outline" className="text-xs">
+                                {program.industry_sector}
+                              </Badge>
+                            </div>
+                          )}
+                          
+                          {program.description_services && (
+                            <p className="text-sm text-gray-600 line-clamp-2">
+                              {program.description_services}
+                            </p>
+                          )}
+
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            {program.contact_info && (
+                              <div className="flex items-center gap-1">
+                                <Mail className="h-3 w-3" />
+                                <span>Contact available</span>
+                              </div>
+                            )}
+                            {program.website_url && (
+                              <div className="flex items-center gap-1">
+                                <Globe className="h-3 w-3" />
+                                <span>Website</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              size="sm"
+                              onClick={() => handleConnect(program)}
+                              className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                            >
+                              Connect (+50 XP)
+                            </Button>
+                            {program.website_url && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => window.open(program.website_url!, '_blank')}
+                              >
+                                <Globe className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium text-blue-600 mb-2">
-                          {game.timeLeft}
-                        </div>
-                        <Button 
-                          size="sm"
-                          onClick={() => handleJoinGame(game.id)}
-                          className={`${
-                            game.status === 'live' ? 'bg-red-600 hover:bg-red-700' :
-                            game.status === 'joining' ? 'bg-yellow-600 hover:bg-yellow-700' :
-                            'bg-green-600 hover:bg-green-700'
-                          } text-white`}
-                        >
-                          {game.status === 'live' ? 'Join Now' : 
-                           game.status === 'joining' ? 'Join Queue' : 'Set Reminder'}
-                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="challenges" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {connectionChallenges.map((challenge) => (
+                <Card key={challenge.id} className="bg-white/80 backdrop-blur-sm">
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{challenge.icon}</span>
+                      <div>
+                        <CardTitle className="text-lg">{challenge.title}</CardTitle>
+                        <p className="text-sm text-gray-600">{challenge.description}</p>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Achievements */}
-            <Card className="bg-white/80 backdrop-blur-sm shadow-xl border-2 border-yellow-100">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-6 w-6 text-yellow-600" />
-                  Achievements
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-3">
-                  {achievements.map((achievement, index) => (
-                    <div 
-                      key={index} 
-                      className={`p-3 rounded-lg text-center border-2 ${
-                        achievement.unlocked 
-                          ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200' 
-                          : 'bg-gray-50 border-gray-200'
-                      }`}
-                    >
-                      <div className={`text-2xl mb-1 ${achievement.unlocked ? '' : 'grayscale'}`}>
-                        {achievement.icon}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span>Progress</span>
+                        <span>{challenge.progress}/{challenge.target}</span>
                       </div>
-                      <div className={`text-xs font-medium ${
-                        achievement.unlocked ? 'text-yellow-800' : 'text-gray-500'
-                      }`}>
-                        {achievement.title}
+                      <Progress value={(challenge.progress / challenge.target) * 100} />
+                      <div className="flex items-center justify-between">
+                        <Badge className="bg-purple-100 text-purple-800">
+                          {challenge.points} XP
+                        </Badge>
+                        {challenge.completed && (
+                          <Badge className="bg-green-100 text-green-800">
+                            ✓ Completed
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
 
-            {/* Quick Actions */}
-            <Card className="bg-white/80 backdrop-blur-sm shadow-xl border-2 border-green-100">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Rocket className="h-6 w-6 text-green-600" />
-                  Quick Connect
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button 
-                  className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                  onClick={() => navigate('/matchmaker')}
-                >
-                  <Users className="h-4 w-4 mr-2" />
-                  Find Perfect Match
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
-                >
-                  <Lightbulb className="h-4 w-4 mr-2" />
-                  Random Connection
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
-                >
-                  <Heart className="h-4 w-4 mr-2" />
-                  Join Community
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Fun Stats */}
-            <Card className="bg-gradient-to-br from-pink-50 to-purple-50 border-2 border-pink-200">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Star className="h-6 w-6 text-pink-600" />
-                  Fun Stats
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Connections Made</span>
-                  <span className="font-bold text-pink-600">42 🤝</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Coffee Chats</span>
-                  <span className="font-bold text-purple-600">18 ☕</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Ideas Shared</span>
-                  <span className="font-bold text-blue-600">127 💡</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">High Fives Given</span>
-                  <span className="font-bold text-green-600">89 🙌</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+          <TabsContent value="achievements" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {achievements.map((achievement) => (
+                <Card key={achievement.id} className={`bg-white/80 backdrop-blur-sm ${achievement.unlocked ? '' : 'opacity-60'}`}>
+                  <CardHeader>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{achievement.icon}</span>
+                      <div>
+                        <CardTitle className="text-lg">{achievement.title}</CardTitle>
+                        <p className="text-sm text-gray-600">{achievement.description}</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <Badge className={getRarityColor(achievement.rarity)}>
+                        {achievement.rarity.charAt(0).toUpperCase() + achievement.rarity.slice(1)}
+                      </Badge>
+                      {achievement.unlocked ? (
+                        <Badge className="bg-green-100 text-green-800">
+                          ✓ Unlocked
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">
+                          🔒 Locked
+                        </Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
