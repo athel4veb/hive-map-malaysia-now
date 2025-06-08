@@ -23,40 +23,45 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get all profiles of the opposite type
-    const targetType = userType === 'vc' ? 'startup' : 'vc';
-    const { data: profiles, error } = await supabase
-      .from('matchmaking_profiles')
-      .select('*')
-      .eq('user_type', targetType);
+    // Get all startup data from the existing startup table
+    const { data: startups, error } = await supabase
+      .from('startup')
+      .select('*');
 
     if (error) {
       throw new Error(`Database error: ${error.message}`);
     }
 
-    // Prepare context for AI
-    const profilesContext = profiles.map(p => 
-      `${p.name}: ${p.description} | Sectors: ${p.sectors.join(', ')} | Regions: ${p.regions.join(', ')} | Stages: ${p.stages.join(', ')}`
+    if (!startups || startups.length === 0) {
+      return new Response(JSON.stringify({ matches: [] }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Prepare context for AI using the startup table structure
+    const startupsContext = startups.map(s => 
+      `${s.CompanyName || 'Unknown'}: ${s.WhatTheyDo || ''} | Sector: ${s.Sector || ''} | Location: ${s.Location || ''} | Problem: ${s.ProblemTheySolve || ''} | Target: ${s.TargetBeneficiaries || ''} | Impact: ${s.Impact || ''}`
     ).join('\n');
 
     const systemPrompt = `You are an expert matchmaking AI for the Malaysian startup ecosystem. 
     
     User is a ${userType} and provided this description: "${prompt}"
     
-    Available ${targetType}s in database:
-    ${profilesContext}
+    Available startups in database:
+    ${startupsContext}
     
-    Analyze the user's description and match them with the most suitable ${targetType}s. Consider:
+    Analyze the user's description and match them with the most suitable startups. Consider:
     - Sector alignment and synergies
     - Geographic proximity or market overlap
-    - Investment stage compatibility
-    - Complementary strengths and needs
+    - Problem-solution fit
+    - Target beneficiary alignment
+    - Social impact potential
     - Market timing and trends
     
     Return ONLY a JSON array with top 3-5 matches in this exact format:
     [
       {
-        "name": "Profile Name",
+        "name": "Company Name",
         "matchPercentage": 85,
         "reasons": ["Reason 1", "Reason 2", "Reason 3"]
       }
@@ -113,13 +118,40 @@ serve(async (req) => {
     }
     
     const aiResponse = aiData.candidates[0].content.parts[0].text;
-    const aiMatches = JSON.parse(aiResponse);
+    console.log('AI Response:', aiResponse);
+    
+    // Clean the response to extract JSON
+    let cleanResponse = aiResponse.trim();
+    if (cleanResponse.includes('```json')) {
+      cleanResponse = cleanResponse.split('```json')[1].split('```')[0].trim();
+    } else if (cleanResponse.includes('```')) {
+      cleanResponse = cleanResponse.split('```')[1].split('```')[0].trim();
+    }
+    
+    const aiMatches = JSON.parse(cleanResponse);
 
-    // Enrich AI matches with full profile data
+    // Enrich AI matches with full startup data
     const enrichedMatches = aiMatches.map((aiMatch: any) => {
-      const profile = profiles.find(p => p.name === aiMatch.name);
+      const startup = startups.find(s => s.CompanyName === aiMatch.name);
+      if (!startup) return null;
+      
       return {
-        ...profile,
+        id: startup.No || Math.random().toString(),
+        name: startup.CompanyName,
+        companyName: startup.CompanyName,
+        sector: startup.Sector,
+        location: startup.Location,
+        yearFounded: startup.YearFounded,
+        whatTheyDo: startup.WhatTheyDo,
+        problemTheySolve: startup.ProblemTheySolve,
+        targetBeneficiaries: startup.TargetBeneficiaries,
+        revenueModel: startup.RevenueModel,
+        impact: startup.Impact,
+        awards: startup.Awards,
+        grants: startup.Grants,
+        institutionalSupport: startup.InstitutionalSupport,
+        magicAccredited: startup.MaGICAccredited,
+        website: startup.WebsiteSocialMedia,
         matchPercentage: aiMatch.matchPercentage,
         reasons: aiMatch.reasons,
         isAiMatch: true
