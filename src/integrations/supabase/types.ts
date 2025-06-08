@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      grant_programs: {
+        Row: {
+          company_name: string | null
+          contact_info: string | null
+          description_services: string | null
+          fund_name: string | null
+          id: number
+          industry_sector: string | null
+          program_participation: string | null
+          related_news_updates: string | null
+          social_enterprise_status: string | null
+          website_url: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          contact_info?: string | null
+          description_services?: string | null
+          fund_name?: string | null
+          id?: number
+          industry_sector?: string | null
+          program_participation?: string | null
+          related_news_updates?: string | null
+          social_enterprise_status?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          contact_info?: string | null
+          description_services?: string | null
+          fund_name?: string | null
+          id?: number
+          industry_sector?: string | null
+          program_participation?: string | null
+          related_news_updates?: string | null
+          social_enterprise_status?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       grant_urls: {
         Row: {
           created_at: string
