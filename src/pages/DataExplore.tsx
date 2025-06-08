@@ -1,5 +1,6 @@
+
 import { useState, useMemo, useEffect } from "react";
-import { Search, Filter, MapPin, Globe, Mail, Phone, ExternalLink, Sparkles, Loader2 } from "lucide-react";
+import { Search, Filter, MapPin, ExternalLink, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,9 +55,9 @@ const DataExplore = () => {
       console.log("Testing Supabase connection...");
       setConnectionStatus("Testing connection...");
       
-      // Test basic connection to startups table
+      // Test basic connection to startup table
       const { data: connectionTest, error: connectionError } = await supabase
-        .from('startups')
+        .from('startup')
         .select('count', { count: 'exact', head: true });
       
       if (connectionError) {
@@ -67,7 +68,7 @@ const DataExplore = () => {
       }
       
       console.log('Connection successful, row count:', connectionTest);
-      setConnectionStatus(`Connected successfully. Startups table has ${connectionTest || 0} rows.`);
+      setConnectionStatus(`Connected successfully. Startup table has ${connectionTest || 0} rows.`);
       toast.success("Supabase connection successful!");
       return true;
     } catch (error) {
@@ -91,12 +92,11 @@ const DataExplore = () => {
           return;
         }
         
-        // Fetch top 2 startups from startups table
-        console.log("Fetching top 2 startup data from startups table...");
+        // Fetch all startups from startup table
+        console.log("Fetching startup data from startup table...");
         const { data: startups, error: startupError } = await supabase
-          .from('startups')
-          .select('*')
-          .limit(2);
+          .from('startup')
+          .select('*');
         
         if (startupError) {
           console.error('Error fetching startups:', startupError);
@@ -111,31 +111,31 @@ const DataExplore = () => {
         // Transform data to unified format
         const transformedData: Organization[] = [];
 
-        // Transform startups from startups table
+        // Transform startups from startup table
         if (startups && startups.length > 0) {
           startups.forEach((startup) => {
             console.log('Processing startup:', startup);
             transformedData.push({
-              id: `startup-${startup.id || Math.random()}`,
-              name: startup.startup_name || 'Unknown Startup',
-              website: startup.website_url || '',
-              description: startup.description || '',
-              sector: startup.industry_sector || 'Various',
-              location: startup.location || 'Malaysia',
-              contactEmail: startup.contact_info || '',
+              id: `startup-${startup.No || Math.random()}`,
+              name: startup["Company Name"] || 'Unknown Startup',
+              website: startup["Website/Social Media"] || '',
+              description: startup["What They Do"] || '',
+              sector: startup.Sector || 'Various',
+              location: startup.Location || 'Malaysia',
+              contactEmail: '',
               contactPhone: '',
-              notes: startup.related_news_updates || '',
-              yearFounded: startup.founding_year || undefined,
-              targetBeneficiaries: '',
-              revenueModel: '',
-              impact: '',
-              awards: '',
-              grants: ''
+              notes: startup["Problem They Solve"] || '',
+              yearFounded: startup["Year Founded"] || undefined,
+              targetBeneficiaries: startup["Target Beneficiaries"] || '',
+              revenueModel: startup["Revenue Model"] || '',
+              impact: startup.Impact || '',
+              awards: startup.Awards || '',
+              grants: startup.Grants || ''
             });
           });
         } else {
-          console.log('No startup data found in startups table');
-          toast.info("No startup data found in the startups table");
+          console.log('No startup data found in startup table');
+          toast.info("No startup data found in the startup table");
         }
 
         console.log('Transformed data:', transformedData);
@@ -227,14 +227,13 @@ const DataExplore = () => {
     setAiPrompt("");
   };
 
-  // Manual fetch function to show raw data from startups table
+  // Manual fetch function to show raw data from startup table
   const fetchRawStartupData = async () => {
     try {
-      console.log("Manually fetching ALL data from startups table...");
+      console.log("Manually fetching ALL data from startup table...");
       const { data, error } = await supabase
-        .from('startups')
-        .select('*')
-        .limit(2);
+        .from('startup')
+        .select('*');
       
       if (error) {
         console.error('Error fetching raw startup data:', error);
@@ -242,8 +241,8 @@ const DataExplore = () => {
         return;
       }
 
-      console.log('Raw startups table data:', data);
-      console.log('Total rows fetched from startups table:', data?.length || 0);
+      console.log('Raw startup table data:', data);
+      console.log('Total rows fetched from startup table:', data?.length || 0);
       
       if (data && data.length > 0) {
         data.forEach((row, index) => {
@@ -253,7 +252,7 @@ const DataExplore = () => {
       
       setRawStartupData(data || []);
       setShowRawData(true);
-      toast.success(`Found ${data?.length || 0} rows in startups table`);
+      toast.success(`Found ${data?.length || 0} rows in startup table`);
     } catch (error) {
       console.error('Unexpected error fetching raw data:', error);
       toast.error('Failed to fetch raw data');
@@ -289,7 +288,7 @@ const DataExplore = () => {
             Discover Startups
           </h1>
           <p className="text-lg text-gray-600">
-            Explore {organizations.length} startups in Malaysia's social enterprise ecosystem (showing top 2 for testing)
+            Explore {organizations.length} startups in Malaysia's social enterprise ecosystem
           </p>
           {connectionStatus && (
             <p className="text-sm text-gray-500 mt-2">
@@ -300,8 +299,8 @@ const DataExplore = () => {
 
         {/* Debug Section - Manual Data Fetch */}
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-red-800 mb-2">Debug: Manual Data Fetch (Top 2 from startups table)</h3>
-          <p className="text-red-700 mb-4">Click below to manually fetch and display raw data from the startups table:</p>
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Debug: Manual Data Fetch from Startup Table</h3>
+          <p className="text-red-700 mb-4">Click below to manually fetch and display raw data from the startup table:</p>
           <div className="flex gap-3 mb-4">
             <Button onClick={fetchRawStartupData} variant="outline" className="border-red-300">
               Fetch Raw Startup Data
@@ -315,38 +314,38 @@ const DataExplore = () => {
           
           {showRawData && (
             <div className="mt-4">
-              <h4 className="font-medium text-red-800 mb-2">Raw Startups Table Data ({rawStartupData.length} rows):</h4>
+              <h4 className="font-medium text-red-800 mb-2">Raw Startup Table Data ({rawStartupData.length} rows):</h4>
               {rawStartupData.length > 0 ? (
                 <div className="bg-white rounded border max-h-96 overflow-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Startup Name</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Industry Sector</TableHead>
+                        <TableHead>No</TableHead>
+                        <TableHead>Company Name</TableHead>
+                        <TableHead>What They Do</TableHead>
+                        <TableHead>Sector</TableHead>
                         <TableHead>Location</TableHead>
-                        <TableHead>Founding Year</TableHead>
+                        <TableHead>Year Founded</TableHead>
                         <TableHead>Website</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {rawStartupData.map((row, index) => (
                         <TableRow key={index}>
-                          <TableCell>{row.id || 'N/A'}</TableCell>
-                          <TableCell>{row.startup_name || 'N/A'}</TableCell>
-                          <TableCell className="max-w-xs truncate">{row.description || 'N/A'}</TableCell>
-                          <TableCell>{row.industry_sector || 'N/A'}</TableCell>
-                          <TableCell>{row.location || 'N/A'}</TableCell>
-                          <TableCell>{row.founding_year || 'N/A'}</TableCell>
-                          <TableCell className="max-w-xs truncate">{row.website_url || 'N/A'}</TableCell>
+                          <TableCell>{row.No || 'N/A'}</TableCell>
+                          <TableCell>{row["Company Name"] || 'N/A'}</TableCell>
+                          <TableCell className="max-w-xs truncate">{row["What They Do"] || 'N/A'}</TableCell>
+                          <TableCell>{row.Sector || 'N/A'}</TableCell>
+                          <TableCell>{row.Location || 'N/A'}</TableCell>
+                          <TableCell>{row["Year Founded"] || 'N/A'}</TableCell>
+                          <TableCell className="max-w-xs truncate">{row["Website/Social Media"] || 'N/A'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
               ) : (
-                <p className="text-red-600 bg-white p-4 rounded border">No data found in startups table</p>
+                <p className="text-red-600 bg-white p-4 rounded border">No data found in startup table</p>
               )}
             </div>
           )}
@@ -518,15 +517,22 @@ const DataExplore = () => {
                 
                 {item.notes && (
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-gray-700 mb-1">Related News/Updates:</h4>
+                    <h4 className="text-sm font-medium text-gray-700 mb-1">Problem They Solve:</h4>
                     <p className="text-sm text-gray-600">{item.notes}</p>
                   </div>
                 )}
 
-                {item.contactEmail && (
+                {item.targetBeneficiaries && (
                   <div className="bg-blue-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-blue-700 mb-1">Contact Info:</h4>
-                    <p className="text-sm text-blue-600">{item.contactEmail}</p>
+                    <h4 className="text-sm font-medium text-blue-700 mb-1">Target Beneficiaries:</h4>
+                    <p className="text-sm text-blue-600">{item.targetBeneficiaries}</p>
+                  </div>
+                )}
+
+                {item.impact && (
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-green-700 mb-1">Impact:</h4>
+                    <p className="text-sm text-green-600">{item.impact}</p>
                   </div>
                 )}
               </CardContent>
