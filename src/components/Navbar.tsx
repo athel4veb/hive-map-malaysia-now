@@ -13,7 +13,7 @@ export const Navbar = () => {
     { name: "Startups", href: "/startups" },
     { name: "VC & Grants", href: "/vc" },
     { name: "Contribute", href: "/contribute" },
-    { name: "Matchmaker", href: "/matchmaker" },
+    { name: "Networking Hub", href: "/matchmaker" },
     { name: "Admin", href: "/admin" },
   ];
 
