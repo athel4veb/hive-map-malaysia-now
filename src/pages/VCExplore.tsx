@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Building2, MapPin, ExternalLink, Globe, Award, TrendingUp, Users, Search, Sparkles, Loader2, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -119,27 +120,61 @@ const VCExplore = () => {
 
     setIsAiLoading(true);
     try {
-      const searchResults = vcData.filter(vc => {
-        const searchText = `${vc.companyName} ${vc.descriptionServices} ${vc.industrySector} ${vc.programParticipation} ${vc.socialEnterpriseStatus}`.toLowerCase();
-        const promptKeywords = aiPrompt.toLowerCase().split(' ');
-        
-        return promptKeywords.some(keyword => 
-          keyword.length > 2 && searchText.includes(keyword)
-        );
+      console.log('Calling AI matchmaker for VC recommendations...');
+      
+      const { data, error } = await supabase.functions.invoke('ai-matchmaker', {
+        body: {
+          userType: 'vc',
+          prompt: aiPrompt
+        }
       });
 
-      const mappedMatches: VCData[] = searchResults.slice(0, 10).map((match, index) => ({
-        ...match,
-        id: match.id + 10000,
-        matchPercentage: Math.floor(Math.random() * 30) + 70,
-        reasons: [
-          `Strong alignment with "${aiPrompt.substring(0, 50)}..."`,
-          `Relevant sector: ${match.industrySector}`,
-          `Fund type: ${match.fundName}`,
-          match.socialEnterpriseStatus ? `Social enterprise focus` : ''
-        ].filter(Boolean),
-        isAiMatch: true
-      }));
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(`Edge Function error: ${error.message}`);
+      }
+
+      console.log('AI matchmaker response:', data);
+
+      if (!data || !data.matches) {
+        throw new Error('Invalid response from AI matchmaker');
+      }
+
+      // Map AI matches to VC data format
+      const mappedMatches: VCData[] = data.matches.map((match: any) => {
+        // Try to find the VC in our dataset by name
+        const vcMatch = vcData.find(vc => 
+          vc.companyName.toLowerCase() === match.name.toLowerCase() ||
+          vc.companyName.toLowerCase().includes(match.name.toLowerCase()) ||
+          match.name.toLowerCase().includes(vc.companyName.toLowerCase())
+        );
+
+        if (vcMatch) {
+          return {
+            ...vcMatch,
+            matchPercentage: match.matchPercentage,
+            reasons: match.reasons,
+            isAiMatch: true
+          };
+        }
+
+        // If no exact match found, create a placeholder entry
+        return {
+          id: Math.random() * 10000,
+          companyName: match.name,
+          fundName: 'AI Recommended',
+          industrySector: 'Various',
+          descriptionServices: match.reasons?.join('. ') || 'AI recommended match',
+          websiteUrl: '',
+          contactInfo: '',
+          socialEnterpriseStatus: '',
+          programParticipation: '',
+          relatedNewsUpdates: '',
+          matchPercentage: match.matchPercentage,
+          reasons: match.reasons,
+          isAiMatch: true
+        };
+      });
 
       setAiMatches(mappedMatches);
       setShowAiResults(true);
