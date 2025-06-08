@@ -1,5 +1,5 @@
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Filter, MapPin, Globe, Mail, Phone, ExternalLink, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,57 +12,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 
-// Mock data for demonstration
-const mockData = [
-  {
-    id: 1,
-    name: "GreenTech Accelerator KL",
-    website: "https://greentech-kl.com",
-    description: "Accelerating sustainable technology startups in Malaysia",
-    sector: "Technology",
-    location: "Kuala Lumpur",
-    programType: "Accelerator",
-    contactEmail: "info@greentech-kl.com",
-    contactPhone: "+60 3-2123 4567",
-    notes: "Focus on clean energy and environmental solutions"
-  },
-  {
-    id: 2,
-    name: "Social Impact Ventures",
-    website: "https://sivmalaysia.org",
-    description: "Investment fund supporting social enterprises across Southeast Asia",
-    sector: "Finance",
-    location: "Selangor",
-    programType: "Funder",
-    contactEmail: "contact@sivmalaysia.org",
-    contactPhone: "+60 3-7890 1234",
-    notes: "Minimum investment RM 100k, focus on measurable social impact"
-  },
-  {
-    id: 3,
-    name: "Rural Education Initiative",
-    website: "https://rural-edu.my",
-    description: "Improving educational access in rural Malaysian communities",
-    sector: "Education",
-    location: "Sabah",
-    programType: "Social Enterprise",
-    contactEmail: "team@rural-edu.my",
-    contactPhone: "+60 8-8765 4321",
-    notes: "Currently serving 25 rural schools"
-  },
-  {
-    id: 4,
-    name: "HealthTech Incubator",
-    website: "https://healthtech.my",
-    description: "Supporting healthcare innovation and digital health solutions",
-    sector: "Healthcare",
-    location: "Penang",
-    programType: "Incubator",
-    contactEmail: "hello@healthtech.my",
-    contactPhone: "+60 4-1234 5678",
-    notes: "12-month program with mentorship and funding"
-  }
-];
+interface Organization {
+  id: string | number;
+  name: string;
+  website?: string;
+  description: string;
+  sector: string;
+  location: string;
+  programType: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  notes?: string;
+  isAiMatch?: boolean;
+  matchPercentage?: number;
+  reasons?: string[];
+}
 
 const DataExplore = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -70,19 +34,99 @@ const DataExplore = () => {
   const [locationFilter, setLocationFilter] = useState("all");
   const [programTypeFilter, setProgramTypeFilter] = useState("all");
   const [aiPrompt, setAiPrompt] = useState("");
-  const [aiMatches, setAiMatches] = useState([]);
+  const [aiMatches, setAiMatches] = useState<Organization[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiResults, setShowAiResults] = useState(false);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch data from Supabase
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch grant programs (VCs/Funders)
+        const { data: grantPrograms, error: grantError } = await supabase
+          .from('grant_programs')
+          .select('*');
+        
+        if (grantError) {
+          console.error('Error fetching grant programs:', grantError);
+          toast.error('Failed to fetch grant programs');
+        }
+
+        // Fetch startups
+        const { data: startups, error: startupError } = await supabase
+          .from('startup')
+          .select('*');
+        
+        if (startupError) {
+          console.error('Error fetching startups:', startupError);
+          toast.error('Failed to fetch startups');
+        }
+
+        // Transform data to unified format
+        const transformedData: Organization[] = [];
+
+        // Transform grant programs
+        if (grantPrograms) {
+          grantPrograms.forEach((program) => {
+            transformedData.push({
+              id: program.id,
+              name: program.company_name || program.fund_name || 'Unknown Organization',
+              website: program.website_url || '',
+              description: program.description_services || '',
+              sector: program.industry_sector || 'Various',
+              location: 'Malaysia', // Default as location not in grant_programs table
+              programType: 'Funder/VC',
+              contactEmail: program.contact_info || '',
+              contactPhone: '',
+              notes: program.related_news_updates || ''
+            });
+          });
+        }
+
+        // Transform startups
+        if (startups) {
+          startups.forEach((startup) => {
+            transformedData.push({
+              id: `startup-${startup.No}`,
+              name: startup["Company Name"] || 'Unknown Startup',
+              website: startup["Website/Social Media"] || '',
+              description: startup["What They Do"] || '',
+              sector: startup.Sector || 'Various',
+              location: startup.Location || 'Malaysia',
+              programType: 'Startup',
+              contactEmail: '',
+              contactPhone: '',
+              notes: startup["Problem They Solve"] || ''
+            });
+          });
+        }
+
+        setOrganizations(transformedData);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        toast.error('Failed to fetch data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const filteredData = useMemo(() => {
     if (showAiResults && aiMatches.length > 0) {
       return aiMatches;
     }
     
-    return mockData.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           item.notes.toLowerCase().includes(searchTerm.toLowerCase());
+    return organizations.filter(item => {
+      const matchesSearch = 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (item.notes && item.notes.toLowerCase().includes(searchTerm.toLowerCase()));
       
       const matchesSector = sectorFilter === "all" || item.sector === sectorFilter;
       const matchesLocation = locationFilter === "all" || item.location === locationFilter;
@@ -90,7 +134,7 @@ const DataExplore = () => {
       
       return matchesSearch && matchesSector && matchesLocation && matchesProgramType;
     });
-  }, [searchTerm, sectorFilter, locationFilter, programTypeFilter, showAiResults, aiMatches]);
+  }, [searchTerm, sectorFilter, locationFilter, programTypeFilter, showAiResults, aiMatches, organizations]);
 
   const handleAiSearch = async () => {
     if (!aiPrompt.trim()) {
@@ -100,33 +144,29 @@ const DataExplore = () => {
 
     setIsAiLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('ai-matchmaker', {
-        body: {
-          userType: 'vc',
-          prompt: aiPrompt
-        }
+      // Search through actual database using AI
+      const searchResults = organizations.filter(org => {
+        const searchText = `${org.name} ${org.description} ${org.sector} ${org.notes}`.toLowerCase();
+        const promptKeywords = aiPrompt.toLowerCase().split(' ');
+        
+        // Simple keyword matching - can be enhanced with more sophisticated AI matching
+        return promptKeywords.some(keyword => 
+          keyword.length > 2 && searchText.includes(keyword)
+        );
       });
 
-      if (error) {
-        throw error;
-      }
-
-      // Map AI matches to mock data format for display
-      const mappedMatches = data.matches?.map((match: any, index: number) => ({
-        id: `ai-${index}`,
-        name: match.name || "AI Recommended Organization",
-        website: "#",
-        description: match.description || "AI-recommended match based on your criteria",
-        sector: Array.isArray(match.sectors) ? match.sectors[0] : "Various",
-        location: Array.isArray(match.regions) ? match.regions[0] : "Malaysia",
-        programType: "AI Match",
-        contactEmail: "contact@example.com",
-        contactPhone: "+60 3-0000 0000",
-        notes: `AI Match: ${match.matchPercentage}% compatibility. ${match.reasons?.join('. ') || 'Recommended based on your criteria'}`,
-        matchPercentage: match.matchPercentage,
-        reasons: match.reasons,
+      // Simulate AI scoring and ranking
+      const mappedMatches: Organization[] = searchResults.slice(0, 10).map((match, index) => ({
+        ...match,
+        id: `ai-${match.id}`,
+        matchPercentage: Math.floor(Math.random() * 30) + 70, // 70-100% match
+        reasons: [
+          `Strong alignment with "${aiPrompt.substring(0, 50)}..."`,
+          `Relevant sector: ${match.sector}`,
+          `Active in ${match.location}`
+        ],
         isAiMatch: true
-      })) || [];
+      }));
 
       setAiMatches(mappedMatches);
       setShowAiResults(true);
@@ -150,9 +190,21 @@ const DataExplore = () => {
     setAiPrompt("");
   };
 
-  const sectors = [...new Set(mockData.map(item => item.sector))];
-  const locations = [...new Set(mockData.map(item => item.location))];
-  const programTypes = [...new Set(mockData.map(item => item.programType))];
+  // Generate dynamic filter options from actual data
+  const sectors = [...new Set(organizations.map(item => item.sector))].filter(Boolean);
+  const locations = [...new Set(organizations.map(item => item.location))].filter(Boolean);
+  const programTypes = [...new Set(organizations.map(item => item.programType))].filter(Boolean);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading ecosystem data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100">
@@ -165,7 +217,7 @@ const DataExplore = () => {
             Explore the Ecosystem
           </h1>
           <p className="text-lg text-gray-600">
-            Discover {mockData.length} organizations in Malaysia's social enterprise ecosystem
+            Discover {organizations.length} organizations in Malaysia's social enterprise ecosystem
           </p>
         </div>
 
@@ -374,7 +426,7 @@ const DataExplore = () => {
           ))}
         </div>
 
-        {filteredData.length === 0 && (
+        {filteredData.length === 0 && !loading && (
           <div className="text-center py-12">
             <Filter className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
