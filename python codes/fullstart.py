@@ -4,11 +4,11 @@ import time
 import openai
 
 # Set your OpenAI API key
-openai.api_key = "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"
+openai.api_key = ""
 
 # Supabase Config
 SUPABASE_URL = "https://kbyqlgmkowekcobzakpx.supabase.co/" 
-SUPABASE_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtieXFsZ21rb3dla2NvYnpha3B4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0OTM1MzA4MSwiZXhwIjoyMDY0OTI5MDgxfQ.dqFXnV2zjc-i7dzoqStc7t_hzQEDBHGA7966JjwFe_M"
+SUPABASE_API_KEY = ""
 STARTUP_URLS_TABLE = "startup_urls"
 STARTUPS_TABLE = "startup"
 headers = {
