@@ -93,6 +93,60 @@ export type Database = {
         }
         Relationships: []
       }
+      startup: {
+        Row: {
+          Awards: string | null
+          "Company Name": string | null
+          Grants: string | null
+          Impact: string | null
+          "Institutional Support": string | null
+          Location: string | null
+          "MaGIC Accredited": string | null
+          No: number | null
+          "Problem They Solve": string | null
+          "Revenue Model": string | null
+          Sector: string | null
+          "Target Beneficiaries": string | null
+          "Website/Social Media": string | null
+          "What They Do": string | null
+          "Year Founded": number | null
+        }
+        Insert: {
+          Awards?: string | null
+          "Company Name"?: string | null
+          Grants?: string | null
+          Impact?: string | null
+          "Institutional Support"?: string | null
+          Location?: string | null
+          "MaGIC Accredited"?: string | null
+          No?: number | null
+          "Problem They Solve"?: string | null
+          "Revenue Model"?: string | null
+          Sector?: string | null
+          "Target Beneficiaries"?: string | null
+          "Website/Social Media"?: string | null
+          "What They Do"?: string | null
+          "Year Founded"?: number | null
+        }
+        Update: {
+          Awards?: string | null
+          "Company Name"?: string | null
+          Grants?: string | null
+          Impact?: string | null
+          "Institutional Support"?: string | null
+          Location?: string | null
+          "MaGIC Accredited"?: string | null
+          No?: number | null
+          "Problem They Solve"?: string | null
+          "Revenue Model"?: string | null
+          Sector?: string | null
+          "Target Beneficiaries"?: string | null
+          "Website/Social Media"?: string | null
+          "What They Do"?: string | null
+          "Year Founded"?: number | null
+        }
+        Relationships: []
+      }
       startup_urls: {
         Row: {
           created_at: string
