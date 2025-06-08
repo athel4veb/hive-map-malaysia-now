@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 import { useNavigate } from "react-router-dom";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart as RechartsPieChart, Cell, LineChart, Line, Pie } from "recharts";
 
 interface UserProfile {
   id: string;
@@ -555,16 +555,23 @@ const AdminPanel = () => {
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <RechartsPieChart data={dashboardData.sectorDistribution}>
-                        {dashboardData.sectorDistribution.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </RechartsPieChart>
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
+                  <RechartsPieChart>
+                    <Pie
+                      data={dashboardData.sectorDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {dashboardData.sectorDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </RechartsPieChart>
                 </ChartContainer>
               </CardContent>
             </Card>
@@ -579,16 +586,14 @@ const AdminPanel = () => {
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={dashboardData.yearlyTrends}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="year" />
-                      <YAxis />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line type="monotone" dataKey="startups" stroke="#8884d8" strokeWidth={3} />
-                      <Line type="monotone" dataKey="vcs" stroke="#82ca9d" strokeWidth={3} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <LineChart data={dashboardData.yearlyTrends}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="year" />
+                    <YAxis />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="startups" stroke="#8884d8" strokeWidth={3} />
+                    <Line type="monotone" dataKey="vcs" stroke="#82ca9d" strokeWidth={3} />
+                  </LineChart>
                 </ChartContainer>
               </CardContent>
             </Card>
