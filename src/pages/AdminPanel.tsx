@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Globe, Download, Upload, LogOut, User, FileText, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,41 +28,48 @@ const AdminPanel = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [urls, setUrls] = useState([
-    "https://www.adb.org/countries/malaysia/social-enterprises",
-    "https://www.sbc.org.my/directory",
-    "https://www.brit.org.my/members"
-  ]);
+  const [urls, setUrls] = useState<string[]>([]);
   const [newUrl, setNewUrl] = useState("");
   const [bulkUrls, setBulkUrls] = useState("");
   const [urlType, setUrlType] = useState<"vc" | "startup">("startup");
   const [isScrapingActive, setIsScrapingActive] = useState(false);
   const [uploadMethod, setUploadMethod] = useState<"url" | "csv">("url");
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
+  // Check authentication status
   useEffect(() => {
-    // Check authentication status
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/auth');
-        return;
-      }
-      setUser(session.user);
-      
-      // Fetch user profile
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate('/auth');
+          return;
+        }
+        
+        setUser(session.user);
+        
+        // Fetch user profile
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-      } else {
-        setUserProfile(profile);
+        if (error) {
+          console.error('Error fetching profile:', error);
+        } else {
+          setUserProfile(profile);
+        }
+        
+        // Load existing URLs
+        await loadExistingUrls(urlType);
+        
+        setInitialLoadDone(true);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error in authentication check:", error);
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     checkAuth();
@@ -79,14 +87,52 @@ const AdminPanel = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  // Reload URLs when URL type changes
+  useEffect(() => {
+    if (initialLoadDone) {
+      loadExistingUrls(urlType);
+    }
+  }, [urlType, initialLoadDone]);
+
+  // Load existing URLs from database
+  const loadExistingUrls = async (type: "vc" | "startup") => {
+    try {
+      const tableName = type === "vc" ? "grant_urls" : "startup_urls";
+      
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('url');
+      
+      if (error) {
+        console.error(`Error loading URLs from ${tableName}:`, error);
+        throw error;
+      }
+      
+      if (data) {
+        const loadedUrls = data.map(item => item.url);
+        setUrls(loadedUrls);
+        console.log(`Loaded ${loadedUrls.length} URLs from ${tableName}`);
+      }
+    } catch (error) {
+      console.error("Error in loadExistingUrls:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load existing URLs from database.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({
       title: "Logged out",
       description: "You have been logged out successfully.",
     });
+    navigate('/auth');
   };
 
+  // Process CSV file upload
   const handleCsvUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -105,17 +151,17 @@ const AdminPanel = () => {
       const text = e.target?.result as string;
       const lines = text.split('\n').map(line => line.trim()).filter(line => line);
       
-      // Assuming CSV has URLs in the first column
-      const csvUrls = lines.slice(1) // Skip header
+      // Extract URLs from CSV (assumes URLs in first column)
+      const csvUrls = lines.slice(1) // Skip header row
         .map(line => line.split(',')[0].trim())
-        .filter(url => url.startsWith('http'))
+        .filter(url => url && url.startsWith('http'))
         .filter(url => !urls.includes(url));
 
       if (csvUrls.length > 0) {
-        setUrls([...urls, ...csvUrls]);
+        setUrls(prevUrls => [...prevUrls, ...csvUrls]);
         toast({
-          title: "CSV Uploaded",
-          description: `${csvUrls.length} URLs imported from CSV file.`,
+          title: "CSV Processed",
+          description: `${csvUrls.length} new URLs extracted from CSV file.`,
         });
       } else {
         toast({
@@ -129,114 +175,89 @@ const AdminPanel = () => {
     event.target.value = '';
   };
 
-  const submitUrlToDatabase = async (url: string) => {
-    const tableName = urlType === "vc" ? "grant_urls" : "startup_urls";
+  // Add single URL
+  const addUrl = () => {
+    const trimmedUrl = newUrl.trim();
     
-    const { error } = await supabase
-      .from(tableName)
-      .insert({ url });
-
-    if (error) {
-      console.error(`Error submitting URL to ${tableName}:`, error);
-      throw error;
+    if (!trimmedUrl) {
+      toast({
+        title: "Empty URL",
+        description: "Please enter a valid URL.",
+        variant: "destructive",
+      });
+      return;
     }
-  };
-
-  const saveAllUrlsToDatabase = async () => {
-    const tableName = urlType === "vc" ? "grant_urls" : "startup_urls";
     
-    try {
-      // Get existing URLs from the database to avoid duplicates
-      const { data: existingUrls, error: fetchError } = await supabase
-        .from(tableName)
-        .select('url');
-
-      if (fetchError) {
-        console.error('Error fetching existing URLs:', fetchError);
-        return;
-      }
-
-      const existingUrlSet = new Set(existingUrls?.map(item => item.url) || []);
-      
-      // Filter out URLs that already exist in the database
-      const urlsToInsert = urls.filter(url => !existingUrlSet.has(url));
-      
-      if (urlsToInsert.length > 0) {
-        const urlObjects = urlsToInsert.map(url => ({ url }));
-        const { error } = await supabase
-          .from(tableName)
-          .insert(urlObjects);
-
-        if (error) {
-          console.error(`Error saving URLs to ${tableName}:`, error);
-          throw error;
-        }
-
-        console.log(`Saved ${urlsToInsert.length} new URLs to ${tableName}`);
-      }
-    } catch (error) {
-      console.error('Error in saveAllUrlsToDatabase:', error);
-      throw error;
+    if (!trimmedUrl.startsWith('http')) {
+      toast({
+        title: "Invalid URL",
+        description: "URL must start with http:// or https://",
+        variant: "destructive",
+      });
+      return;
     }
+    
+    if (urls.includes(trimmedUrl)) {
+      toast({
+        title: "Duplicate URL",
+        description: "This URL already exists in the list.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUrls([...urls, trimmedUrl]);
+    setNewUrl("");
+    toast({
+      title: "URL Added",
+      description: "New URL has been added to the list.",
+    });
   };
 
-  const addUrl = async () => {
-    if (newUrl.trim() && !urls.includes(newUrl.trim())) {
-      try {
-        await submitUrlToDatabase(newUrl.trim());
-        setUrls([...urls, newUrl.trim()]);
-        setNewUrl("");
-        toast({
-          title: "URL Added",
-          description: `New URL has been added to the ${urlType === "vc" ? "VC" : "startup"} scraping list and database.`,
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to add URL to database.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
+  // Remove URL
   const removeUrl = (urlToRemove: string) => {
     setUrls(urls.filter(url => url !== urlToRemove));
     toast({
       title: "URL Removed",
-      description: "URL has been removed from the scraping list.",
+      description: "URL has been removed from the list.",
     });
   };
 
-  const addBulkUrls = async () => {
+  // Add multiple URLs
+  const addBulkUrls = () => {
+    if (!bulkUrls.trim()) {
+      toast({
+        title: "Empty Input",
+        description: "Please enter one or more URLs.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newUrls = bulkUrls
       .split('\n')
       .map(url => url.trim())
-      .filter(url => url && !urls.includes(url));
+      .filter(url => url && url.startsWith('http'))
+      .filter(url => !urls.includes(url));
     
-    if (newUrls.length > 0) {
-      try {
-        // Submit all URLs to the database
-        for (const url of newUrls) {
-          await submitUrlToDatabase(url);
-        }
-        
-        setUrls([...urls, ...newUrls]);
-        setBulkUrls("");
-        toast({
-          title: "URLs Added",
-          description: `${newUrls.length} URLs have been added to the ${urlType === "vc" ? "VC" : "startup"} scraping list and database.`,
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to add some URLs to database.",
-          variant: "destructive",
-        });
-      }
+    if (newUrls.length === 0) {
+      toast({
+        title: "No Valid URLs",
+        description: "No new valid URLs were found in your input.",
+        variant: "destructive",
+      });
+      return;
     }
+    
+    setUrls(prevUrls => [...prevUrls, ...newUrls]);
+    setBulkUrls("");
+    toast({
+      title: "URLs Added",
+      description: `${newUrls.length} new URLs have been added to the list.`,
+    });
   };
 
+  // Save URLs to database and start scraping
   const startScraping = async () => {
     if (urls.length === 0) {
       toast({
@@ -249,42 +270,67 @@ const AdminPanel = () => {
 
     try {
       setIsScrapingActive(true);
+      const tableName = urlType === "vc" ? "grant_urls" : "startup_urls";
       
-      // Save all current URLs to the database before starting scraping
-      await saveAllUrlsToDatabase();
+      // Get existing URLs from database to avoid duplicates
+      const { data: existingUrls, error: fetchError } = await supabase
+        .from(tableName)
+        .select('url');
+
+      if (fetchError) {
+        throw new Error(`Error fetching existing URLs: ${fetchError.message}`);
+      }
+
+      const existingUrlSet = new Set(existingUrls?.map(item => item.url) || []);
       
-      console.log(`Starting ${urlType} scraping for URLs:`, urls);
+      // Filter URLs that don't exist in the database yet
+      const urlsToInsert = urls.filter(url => !existingUrlSet.has(url));
+      
+      if (urlsToInsert.length > 0) {
+        const urlObjects = urlsToInsert.map(url => ({ url }));
+        
+        const { error: insertError } = await supabase
+          .from(tableName)
+          .insert(urlObjects);
+
+        if (insertError) {
+          throw new Error(`Error saving URLs to database: ${insertError.message}`);
+        }
+        
+        console.log(`Saved ${urlsToInsert.length} new URLs to ${tableName}`);
+      } else {
+        console.log("No new URLs to save to database");
+      }
       
       toast({
         title: "Scraping Started",
-        description: `Initiated ${urlType === "vc" ? "VC" : "startup"} scraping for ${urls.length} URLs. All URLs have been saved to the database.`,
+        description: `Initiated ${urlType === "vc" ? "VC/Grant" : "startup"} scraping for ${urls.length} URLs. All URLs have been saved to the database.`,
       });
 
-      // Simulate scraping process
+      // Simulate scraping process (in a real app, you would call your scraping API/service here)
       setTimeout(() => {
         setIsScrapingActive(false);
         toast({
           title: "Scraping Complete",
-          description: `${urlType === "vc" ? "VC" : "Startup"} data extraction completed. New entries have been added to the database.`,
+          description: `${urlType === "vc" ? "VC/Grant" : "Startup"} data extraction completed. New entries have been added to the database.`,
         });
       }, 5000);
     } catch (error) {
+      console.error("Error in startScraping:", error);
       setIsScrapingActive(false);
       toast({
         title: "Error",
-        description: "Failed to save URLs to database before starting scraping.",
+        description: error instanceof Error ? error.message : "Failed to start scraping process.",
         variant: "destructive",
       });
     }
   };
 
+  // Export current data
   const exportData = () => {
     const data = JSON.stringify({
       urls,
       urlType,
-      scrapedData: [
-        { name: "Sample Organization", sector: "Technology", location: "KL" }
-      ],
       exportedAt: new Date().toISOString()
     }, null, 2);
     
@@ -297,7 +343,7 @@ const AdminPanel = () => {
     
     toast({
       title: "Data Exported",
-      description: `${urlType === "vc" ? "VC" : "Startup"} data has been exported to JSON file.`,
+      description: `${urlType === "vc" ? "VC/Grant" : "Startup"} data has been exported to JSON file.`,
     });
   };
 
@@ -490,7 +536,6 @@ const AdminPanel = () => {
                   />
                   <Button 
                     onClick={addUrl} 
-                    disabled={!newUrl.trim()}
                     className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-6"
                   >
                     <Plus className="h-4 w-4 mr-1" />
@@ -512,8 +557,7 @@ const AdminPanel = () => {
                   className="bg-gray-50 border-gray-200 focus:bg-white transition-colors resize-none"
                 />
                 <Button 
-                  onClick={addBulkUrls} 
-                  disabled={!bulkUrls.trim()} 
+                  onClick={addBulkUrls}
                   variant="outline"
                   className="border-blue-300 text-blue-700 hover:bg-blue-50"
                 >
@@ -618,11 +662,19 @@ const AdminPanel = () => {
                 disabled={isScrapingActive || urls.length === 0}
                 className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 flex-1 h-12 text-lg"
               >
-                {isScrapingActive ? "Scraping..." : `Start ${urlType === "vc" ? "VC/Grant" : "Startup"} Scraping`}
+                {isScrapingActive ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Scraping...
+                  </>
+                ) : (
+                  `Start ${urlType === "vc" ? "VC/Grant" : "Startup"} Scraping`
+                )}
               </Button>
               
               <Button
                 onClick={exportData}
+                disabled={urls.length === 0}
                 variant="outline"
                 className="border-green-300 text-green-700 hover:bg-green-50 px-8 h-12"
               >
