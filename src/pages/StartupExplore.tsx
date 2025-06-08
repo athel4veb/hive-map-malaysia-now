@@ -148,10 +148,10 @@ const StartupExplore = () => {
     try {
       console.log('Calling AI matchmaker with prompt:', aiPrompt);
       
-      // Call the AI matchmaker edge function
+      // Call the AI matchmaker edge function with correct userType for startup search
       const { data, error } = await supabase.functions.invoke('ai-matchmaker', {
         body: {
-          userType: 'vc', // We're looking for startups from a VC perspective
+          userType: 'startup_seeker', // Changed from 'vc' to 'startup_seeker'
           prompt: aiPrompt
         }
       });
@@ -168,10 +168,10 @@ const StartupExplore = () => {
         const mappedMatches: Startup[] = data.matches.map((match: any) => ({
           id: `ai-${match.id || match.name}`,
           companyName: match.name || match.companyName || 'Unknown Company',
-          sector: match.sectors?.join(', ') || match.sector || 'Unspecified',
-          location: match.regions?.join(', ') || match.location || 'Malaysia',
+          sector: match.sector || 'Unspecified',
+          location: match.location || 'Malaysia',
           yearFounded: match.yearFounded,
-          whatTheyDo: match.description || match.whatTheyDo || '',
+          whatTheyDo: match.whatTheyDo || '',
           problemTheySolve: match.problemTheySolve || '',
           targetBeneficiaries: match.targetBeneficiaries || '',
           revenueModel: match.revenueModel || '',
