@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Building2, MapPin, ExternalLink, Calendar, Award, Target, TrendingUp, Users, Sparkles, Loader2, Search, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,14 +10,6 @@ import { Navbar } from "@/components/Navbar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 interface Startup {
   id: string;
@@ -52,6 +43,17 @@ const StartupExplore = () => {
   const [aiMatches, setAiMatches] = useState<Startup[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [showAiResults, setShowAiResults] = useState(false);
+
+  // Helper function to check if a value exists and is not empty
+  const hasValue = (value: any): boolean => {
+    return value && value.toString().trim() !== '' && value.toLowerCase() !== 'not defined';
+  };
+
+  // Helper function to get display text or return null if no value
+  const getDisplayValue = (value: any): string | null => {
+    if (!hasValue(value)) return null;
+    return value.toString().trim();
+  };
 
   useEffect(() => {
     fetchStartups();
@@ -380,7 +382,7 @@ const StartupExplore = () => {
             <Card key={startup.id} className={`hover:shadow-lg transition-shadow bg-white/90 backdrop-blur-sm ${startup.isAiMatch ? 'border-2 border-blue-300' : ''}`}>
               <CardHeader>
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-xl text-gray-900 mb-2">{startup.companyName}</CardTitle>
                     <div className="flex flex-wrap gap-2 mb-2">
                       <Badge className="bg-blue-500 text-white hover:bg-blue-600">
@@ -396,7 +398,7 @@ const StartupExplore = () => {
                           Founded {startup.yearFounded}
                         </Badge>
                       )}
-                      {startup.magicAccredited && startup.magicAccredited.toLowerCase() === 'yes' && (
+                      {hasValue(startup.magicAccredited) && startup.magicAccredited.toLowerCase() === 'yes' && (
                         <Badge variant="outline" className="border-purple-300 text-purple-700">
                           MaGIC Accredited
                         </Badge>
@@ -408,30 +410,37 @@ const StartupExplore = () => {
                       )}
                     </div>
                   </div>
-                  {startup.website && startup.website !== "#" && (
-                    <a 
-                      href={startup.website} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-gray-400 hover:text-blue-600 transition-colors"
-                    >
-                      <ExternalLink className="h-5 w-5" />
-                    </a>
-                  )}
-                  {startup.isAiMatch && (
-                    <Sparkles className="h-5 w-5 text-blue-600" />
-                  )}
+                  <div className="flex items-center gap-2">
+                    {hasValue(startup.website) && startup.website !== "#" && (
+                      <a 
+                        href={startup.website} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        <ExternalLink className="h-5 w-5" />
+                      </a>
+                    )}
+                    {startup.isAiMatch && (
+                      <Sparkles className="h-5 w-5 text-blue-600" />
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-gray-600">{startup.whatTheyDo}</p>
+                {/* Company Description */}
+                {hasValue(startup.whatTheyDo) && (
+                  <p className="text-gray-600">{getDisplayValue(startup.whatTheyDo)}</p>
+                )}
                 
+                {/* Location */}
                 <div className="flex items-center text-sm text-gray-500">
                   <MapPin className="h-4 w-4 mr-1" />
                   {startup.location}
                 </div>
                 
-                {startup.isAiMatch && startup.reasons && (
+                {/* AI Match Reasons */}
+                {startup.isAiMatch && startup.reasons && startup.reasons.length > 0 && (
                   <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                     <h4 className="text-sm font-medium text-blue-800 mb-2">Why this is a good match:</h4>
                     <ul className="text-sm text-blue-700 space-y-1">
@@ -445,38 +454,89 @@ const StartupExplore = () => {
                   </div>
                 )}
                 
-                {startup.problemTheySolve && (
+                {/* Problem They Solve */}
+                {hasValue(startup.problemTheySolve) && (
                   <div className="bg-gray-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-gray-700 mb-1">Problem They Solve:</h4>
-                    <p className="text-sm text-gray-600">{startup.problemTheySolve}</p>
+                    <h4 className="text-sm font-medium text-gray-700 mb-1 flex items-center">
+                      <Target className="h-4 w-4 mr-1" />
+                      Problem They Solve:
+                    </h4>
+                    <p className="text-sm text-gray-600">{getDisplayValue(startup.problemTheySolve)}</p>
                   </div>
                 )}
 
-                {startup.targetBeneficiaries && (
+                {/* Target Beneficiaries */}
+                {hasValue(startup.targetBeneficiaries) && (
                   <div className="bg-blue-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-blue-700 mb-1">Target Beneficiaries:</h4>
-                    <p className="text-sm text-blue-600">{startup.targetBeneficiaries}</p>
+                    <h4 className="text-sm font-medium text-blue-700 mb-1 flex items-center">
+                      <Users className="h-4 w-4 mr-1" />
+                      Target Beneficiaries:
+                    </h4>
+                    <p className="text-sm text-blue-600">{getDisplayValue(startup.targetBeneficiaries)}</p>
                   </div>
                 )}
 
-                {startup.impact && (
+                {/* Impact */}
+                {hasValue(startup.impact) && (
                   <div className="bg-green-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-green-700 mb-1">Impact:</h4>
-                    <p className="text-sm text-green-600">{startup.impact}</p>
+                    <h4 className="text-sm font-medium text-green-700 mb-1 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-1" />
+                      Impact:
+                    </h4>
+                    <p className="text-sm text-green-600">{getDisplayValue(startup.impact)}</p>
                   </div>
                 )}
 
-                {startup.awards && (
+                {/* Revenue Model */}
+                {hasValue(startup.revenueModel) && (
+                  <div className="bg-purple-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-purple-700 mb-1 flex items-center">
+                      <TrendingUp className="h-4 w-4 mr-1" />
+                      Revenue Model:
+                    </h4>
+                    <p className="text-sm text-purple-600">{getDisplayValue(startup.revenueModel)}</p>
+                  </div>
+                )}
+
+                {/* Awards */}
+                {hasValue(startup.awards) && (
                   <div className="bg-yellow-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-yellow-700 mb-1">Awards:</h4>
-                    <p className="text-sm text-yellow-600">{startup.awards}</p>
+                    <h4 className="text-sm font-medium text-yellow-700 mb-1 flex items-center">
+                      <Award className="h-4 w-4 mr-1" />
+                      Awards:
+                    </h4>
+                    <p className="text-sm text-yellow-600">{getDisplayValue(startup.awards)}</p>
                   </div>
                 )}
 
-                {startup.grants && (
+                {/* Grants */}
+                {hasValue(startup.grants) && (
                   <div className="bg-indigo-50 rounded-lg p-3">
-                    <h4 className="text-sm font-medium text-indigo-700 mb-1">Grants:</h4>
-                    <p className="text-sm text-indigo-600">{startup.grants}</p>
+                    <h4 className="text-sm font-medium text-indigo-700 mb-1 flex items-center">
+                      <FileText className="h-4 w-4 mr-1" />
+                      Grants:
+                    </h4>
+                    <p className="text-sm text-indigo-600">{getDisplayValue(startup.grants)}</p>
+                  </div>
+                )}
+
+                {/* Institutional Support */}
+                {hasValue(startup.institutionalSupport) && (
+                  <div className="bg-rose-50 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-rose-700 mb-1 flex items-center">
+                      <Building2 className="h-4 w-4 mr-1" />
+                      Institutional Support:
+                    </h4>
+                    <p className="text-sm text-rose-600">{getDisplayValue(startup.institutionalSupport)}</p>
+                  </div>
+                )}
+
+                {/* Data Completeness Indicator */}
+                {!hasValue(startup.whatTheyDo) && !hasValue(startup.problemTheySolve) && !hasValue(startup.targetBeneficiaries) && (
+                  <div className="bg-gray-100 rounded-lg p-3 text-center">
+                    <p className="text-sm text-gray-500 italic">
+                      Limited information available for this startup
+                    </p>
                   </div>
                 )}
               </CardContent>
