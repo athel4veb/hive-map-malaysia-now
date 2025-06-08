@@ -3,34 +3,12 @@ import { ArrowRight, Target, Users, Globe, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Link } from "react-router-dom";
+import { Navbar } from "@/components/Navbar";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-green-100">
-      {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-sm border-b border-green-200 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">A</span>
-              </div>
-              <span className="text-xl font-bold text-gray-800">ASBhive</span>
-            </div>
-            <div className="hidden md:flex space-x-6">
-              <Link to="/explore" className="text-gray-600 hover:text-green-600 transition-colors">
-                Explore
-              </Link>
-              <Link to="/contribute" className="text-gray-600 hover:text-green-600 transition-colors">
-                Contribute
-              </Link>
-              <Link to="/admin" className="text-gray-600 hover:text-green-600 transition-colors">
-                Admin
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="relative py-20 px-4 sm:px-6 lg:px-8">
@@ -44,9 +22,9 @@ const Index = () => {
             Real-time data, community-driven insights, and comprehensive coverage.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/explore">
+            <Link to="/startups">
               <Button size="lg" className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-8 py-3 text-lg group">
-                Explore the Ecosystem
+                Explore Startups
                 <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
